@@ -70,5 +70,11 @@ void th2028a_hide(const uint8_t symbol);
  */
 void th2028a_draw(void);
 
+
+/*
+ * This method turns off LCD.
+ */
+void th2028a_turnoff(void);
+
 #endif
 
