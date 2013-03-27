@@ -1,0 +1,16 @@
+#ifndef CONFIG_H_
+#define CONFIG_H_
+
+#define F_CPU           2000000UL
+
+#define TH2028A_PORT PORTA
+#define TH2028A_COMM_PIN 7
+#define TH2028A_BAR1_PIN 0
+#define TH2028A_BAR2_PIN 1
+#define TH2028A_BAR3_PIN 2
+#define TH2028A_BAR4_PIN 3
+#define TH2028A_BAR5_PIN 4
+#define TH2028A_HEART_PIN 5
+#define TH2028A_BATTERY_PIN 6
+
+#endif
