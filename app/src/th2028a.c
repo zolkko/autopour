@@ -16,7 +16,10 @@ static uint8_t _lcd_state = 0x00;
  * I hope this expression will be evaluated at compile time.
  * I has to be evaluated into 0xff.
  */
-#define LCD_PORT_MASK ((1 << TH2028A_COMM_PIN) & (1 << TH2028A_HEART_PIN) & (1 << TH2028A_BAR1_PIN) & (1 << TH2028A_BAR2_PIN) & (1 << TH2028A_BAR3_PIN) & (1 << TH2028A_BAR4_PIN) & (1 << TH2028A_BAR5_PIN) & (1 << TH2028A_BATTERY_PIN))
+#define LCD_PORT_MASK ((1 << TH2028A_COMM_PIN) | (1 << TH2028A_HEART_PIN) | \
+					   (1 << TH2028A_BAR1_PIN) | (1 << TH2028A_BAR2_PIN) | \
+					   (1 << TH2028A_BAR3_PIN) | (1 << TH2028A_BAR4_PIN) | \
+					   (1 << TH2028A_BAR5_PIN) | (1 << TH2028A_BATTERY_PIN))
 
 void
 th2028a_init(void)
@@ -77,4 +80,3 @@ th2028a_turnoff(void)
 {
     TH2028A_PORT.OUTCLR = LCD_PORT_MASK;
 }
-

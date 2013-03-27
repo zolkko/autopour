@@ -5,6 +5,8 @@
 #ifndef TH2028A_H_
 #define TH2028A_H_
 
+#include "config.h"
+
 /*
  * Default pin configuration
  */
