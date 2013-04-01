@@ -2,20 +2,26 @@
 #ifndef LCD_H_
 #define LCD_H_
 
-#ifndef LCD_INTERRUPT_PRIORITY
-#define LCD_INTERRUPT_PRIORITY TC_OVFINTLVL_LO_gc
-#endif
+#include "config.h"
 
 #ifndef LCD_PMIC_INTERRUPT_PRIORITY
-#define LCD_PMIC_INTERRUPT_PRIORITY PMIC_LOLVLEN_bm
+#error Please define LCD_PMIC_INTERRUPT_PRIORITY symbol
 #endif
 
 #ifndef LCD_TIMER
-#define LCD_TIMER TCC0
+#error Please define Time/Counter register to be used as LCD refresh clock
 #endif
 
 #ifndef LCD_TIMER_PERIOD
-#define LCD_TIMER_PERIOD 0x0a
+#error Please define LCD_TIMER_PERIOD symbol dexxxs timer period 
+#endif
+
+#if (LCD_PMIC_INTERRUPT_PRIORITY == PMIC_LOLVLEN_bm)
+#	define LCD_INTERRUPT_PRIORITY TC_OVFINTLVL_LO_gc
+#elif (LCD_PMIC_INTERRUPT_PRIORITY == PMIC_MEDLVLEN_bm)
+#	define LCD_INTERRUPT_PRIORITY TC_OVFINTLVL_MED_gc
+#else
+#	define LCD_INTERRUPT_PRIORITY TC_OVFINTLVL_HI_gc
 #endif
 
 /*
