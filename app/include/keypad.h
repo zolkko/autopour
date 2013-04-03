@@ -28,6 +28,10 @@
 #error Please define KEYPAD_TIMER_DIV symbol
 #endif
 
+#ifndef KEYPAD_MIN_INTERVAL
+#error Please define KEYPAD_MIN_INTERVAL
+#endif
+
 #ifndef KEYPAD_PMIC_INTERRUPT_PRIORITY
 #error Please define KEYPAD_PMIC_INTERRUPT_PRIORITY symbol
 #endif
