@@ -1,29 +1,35 @@
-// TODO: move port/pin defines into config file.
 
 #ifndef KEYPAD_H_
 #define KEYPAD_H_
 
-#ifndef KEYPAD_INTERRUPT_PRIORITY
-#define KEYPAD_INTERRUPT_PRIORITY PORT_INT0LVL_LO_gc
+#include "config.h"
+
+#ifndef KEYPAD_PORT
+#error PLease define keypad port
+#endif
+
+#ifndef KEYPAD_BUTTON_STAT
+#error Please define KEYPAD_BUTTON_STAT symbol
+#endif
+
+#ifndef KEYPAD_BUTTON_FUNC
+#error Please define KEYPAD_BUTTON_FUNC symbol
 #endif
 
 #ifndef KEYPAD_PMIC_INTERRUPT_PRIORITY
-#define KEYPAD_PMIC_INTERRUPT_PRIORITY PMIC_LOLVLEN_bm
+#error Please define KEYPAD_PMIC_INTERRUPT_PRIORITY symbol
 #endif
 
-#ifndef KEYPAD_PORT
-#define KEYPAD_PORT PORTF
+#if (KEYPAD_PMIC_INTERRUPT_PRIORITY == PMIC_HILVLEN_bm)
+#	define KEYPAD_INTERRUPT_PRIORITY  PORT_INT0LVL_LO_gc
+#elif (KEYPAD_PMIC_INTERRUPT_PRIORITY == PMIC_MEDLVLEN_bm)
+#	define KEYPAD_INTERRUPT_PRIORITY PORT_INT0LVL_MED_gc
+#else
+#	define KEYPAD_INTERRUPT_PRIORITY PORT_INT0LVL_HI_gc
 #endif
 
 #define KEYPAD_INT0_INTERRUPT(x) x ## _INT0_vect
 
-#ifndef KEYPAD_BUTTON_STAT
-#define KEYPAD_BUTTON_STAT 7
-#endif
-
-#ifndef KEYPAD_BUTTON_FUNC
-#define KEYPAD_BUTTON_FUNC 6
-#endif
 
 #define _KEYPAD_BUTTON_CTRL(x) PIN ## x ## CTRL
 #define KEYPAD_BUTTON_CTRL(x) _KEYPAD_BUTTON_CTRL(x)

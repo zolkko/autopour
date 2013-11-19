@@ -4,10 +4,12 @@
 #include "lcd.h"
 #include "th2028a.h"
 
+/*
 ISR(TCC0_OVF_vect)
 {
 	th2028a_draw();
 }
+*/
 
 /*
  * It assumes that when LCD works the system is clocked by
@@ -18,7 +20,7 @@ void lcd_init(void)
 	th2028a_init();
 	
 	LCD_TIMER.PER   = LCD_TIMER_PERIOD;
-	LCD_TIMER.CTRLA = TC_CLKSEL_DIV1_gc;
+	LCD_TIMER.CTRLA = TC_CLKSEL_DIV256_gc;
 	
 	PMIC.CTRL |= LCD_PMIC_INTERRUPT_PRIORITY;
 }
