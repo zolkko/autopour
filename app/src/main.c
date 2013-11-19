@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <avr/delay.h>
+#include <util/delay.h>
 #include "sys.h"
 #include "rtc.h"
 #include "lcd.h"
@@ -22,7 +22,7 @@ struct State state;
 int main(void)
 {
 	cli();
-	
+	/*
 	sys_init();
 	rtc_init();
 	lcd_init();
@@ -57,7 +57,7 @@ int main(void)
 		if (event) {
 			evt_free_item(event);
 		}
-	}
+	}*/
 	
 	return 0;
 }

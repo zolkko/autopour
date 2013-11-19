@@ -4,10 +4,12 @@
 #include "lcd.h"
 #include "th2028a.h"
 
+/*
 ISR(TCC0_OVF_vect)
 {
 	th2028a_draw();
 }
+*/
 
 /*
  * It assumes that when LCD works the system is clocked by

@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-
-#include <avr/io.h>
-#include "config.h"
-#include "sys.h"
-
-
-void sys_init(void)
-{
-	// CLOCK, SLEEP etc
-}
-=======
-
 #include <avr/io.h>
 #include "config.h"
 #include "sys.h"
@@ -35,4 +22,3 @@ void sys_init(void)
 {
 	sys_init_clock();
 }
->>>>>>> 506b2275984fe1401599d55251f7bf92ea493b1c
