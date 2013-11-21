@@ -9,18 +9,17 @@
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #define configUSE_TICKLESS_IDLE                 0
-#define configCPU_CLOCK_HZ                      60000000
+#define configCPU_CLOCK_HZ                      F_CPU
 #define configTICK_RATE_HZ                      250
 #define configMAX_PRIORITIES                    5
 #define configMINIMAL_STACK_SIZE                128
-#define configTOTAL_HEAP_SIZE                   10240
+#define configTOTAL_HEAP_SIZE                   7168
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
 #define configUSE_MUTEXES                       0
 #define configUSE_RECURSIVE_MUTEXES             0
 #define configUSE_COUNTING_SEMAPHORES           0
-#define configUSE_ALTERNATIVE_API               0 /* Deprecated! */
 #define configQUEUE_REGISTRY_SIZE               10
 #define configUSE_QUEUE_SETS                    0
 #define configUSE_TIME_SLICING                  0
@@ -61,7 +60,7 @@
 /* Optional functions - most linkers will remove unused functions anyway. */
 #define INCLUDE_vTaskPrioritySet                0
 #define INCLUDE_uxTaskPriorityGet               0
-#define INCLUDE_vTaskDelete                     0
+#define INCLUDE_vTaskDelete                     1
 #define INCLUDE_vTaskSuspend                    0
 #define INCLUDE_xResumeFromISR                  0
 #define INCLUDE_vTaskDelayUntil                 0

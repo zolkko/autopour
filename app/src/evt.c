@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <util/atomic.h>
 #include "evt.h"
-
+/*
 struct EvtQueue * evt_new(evt_timeout timeout)
 {
     struct EvtQueue * queue = (struct EvtQueue *) malloc(sizeof(struct EvtQueue));
@@ -72,3 +72,4 @@ void evt_free(struct EvtQueue * queue)
         item = tmp;
     }
 }
+*/

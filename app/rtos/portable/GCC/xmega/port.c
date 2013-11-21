@@ -4,6 +4,8 @@
  *      LS Informationstechnik (Kommunikationselektronik)
  *      Support email: Yuriy.Kulikov.87@googlemail.com
  *
+ * Copyright (C) 2013 Alexey Anisimov, <zolkko@gmail.com>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -147,7 +149,6 @@ extern volatile tskTCB * volatile pxCurrentTCB;
 static void critical_write(volatile uint8_t * address, uint8_t value);
 static void sys_osc_initialize(void);
 static void sys_timer_initialize(void);
-static void sys_pmic_initialize(void);
 
 void critical_write(volatile uint8_t * address, uint8_t value)
 {
@@ -164,23 +165,29 @@ void critical_write(volatile uint8_t * address, uint8_t value)
     );
 }
 
+/**
+ * Enables 2MHz oscillator and set it as the system
+ * clock source
+ */
 void sys_osc_initialize(void)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-        OSC.CTRL |= OSC_RC32MEN_bm;
+        OSC.CTRL |= OSC_RC2MEN_bm;
         do {} while(!(OSC.STATUS & OSC_RC2MRDY_bm));
         critical_write(&(CLK.CTRL), CLK_SCLKSEL_RC32M_gc);
     }
 }
 
+/**
+ * Initializes system tick clock and enabled particular interrupt
+ * priority in PMIC
+ */
 void sys_timer_initialize(void)
 {
-    // TC0_SetOverflowIntLevel(tickTimer, TC_OVFINTLVL_LO_gc);
-}
-
-void sys_pmic_initialize(void)
-{
-    //
+    SYS_TICK_TIMER.PER = SYS_TICK_PERIOD;
+    SYS_TICK_TIMER.CTRLA = SYS_TICK_DIVIDER;
+    SYS_TICK_TIMER.INTCTRLA = TC_OVFINTLVL_LO_gc;
+	PMIC.CTRL |= SYS_TICK_INTERRUPT_PRIORITY;
 }
 
 
@@ -356,7 +363,6 @@ portBASE_TYPE xPortStartScheduler(void)
 {
     sys_osc_initialize();
     sys_timer_initialize();
-    sys_pmic_initialize();
 
     portRESTORE_CONTEXT();
 

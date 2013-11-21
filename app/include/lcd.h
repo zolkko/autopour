@@ -4,6 +4,7 @@
 
 #include "config.h"
 
+/*
 #ifndef LCD_PMIC_INTERRUPT_PRIORITY
 #error Please define LCD_PMIC_INTERRUPT_PRIORITY symbol
 #endif
@@ -23,20 +24,20 @@
 #else
 #	define LCD_INTERRUPT_PRIORITY TC_OVFINTLVL_HI_gc
 #endif
-
+*/
 /*
  * Initializes LCD clock source.
  */
-void lcd_init(void);
+//void lcd_init(void);
 
 /*
  * Enables Timer/Counter interrupt what leads to LCD refreshing.
  */
-void lcd_enable(void);
+//void lcd_enable(void);
 
 /*
  * Disables Timer/Counter interrupt and then clears LCD screen.
  */
-void lcd_disable(void);
+//void lcd_disable(void);
 
 #endif

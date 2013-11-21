@@ -4,6 +4,7 @@
 
 #include "config.h"
 
+/*
 #ifndef KEYPAD_PORT
 #error Please define keypad port
 #endif
@@ -60,5 +61,7 @@ void keypad_init(void);
 void keypad_enable(void);
 
 void keypad_disable(void);
+
+*/
 
 #endif

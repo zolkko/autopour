@@ -5,6 +5,7 @@
 #include <util/atomic.h>
 #include "keypad.h"
 
+/*
 #define BTN_PRESS_bp 1
 #define BTN_OVF_bp 2
 #define BTN_bm 3
@@ -93,10 +94,11 @@ void handle_button_keyup(uint8_t btn_offset, uint16_t * cnt, button_handler hand
 		}
 	}
 }
-
+*/
 /*
  * Initializes buttons as pulled-up input sources.
  */
+/*
 void keypad_init(void)
 {
 	KEYPAD_PORT.DIRCLR = _BV(KEYPAD_BUTTON_STAT) | _BV(KEYPAD_BUTTON_FUNC);
@@ -127,3 +129,4 @@ void keypad_disable(void)
 	stat_cnt = 0;
 	func_cnt = 0;	
 }
+*/

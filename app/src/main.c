@@ -1,63 +1,59 @@
-
 #include "config.h"
 #include <stddef.h>
+#include <stdbool.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
-#include "sys.h"
-#include "rtc.h"
-#include "lcd.h"
-#include "keypad.h"
-#include "evt.h"
 
-#define DEFAULT_EVENT_TIMEOUT 100
+#include "FreeRTOS.h"
+#include "task.h"
 
-struct State
+
+/**
+ * This will be the main task
+ */
+void TestFunction(void * params)
 {
-	uint8_t value;	
-};
+    uint32_t i = 0;
+    while (true) {
+        i++;
+        vTaskDelay(10);
+        if (i > 2000) {
+            i = 0;
+        }
+    }
+    vTaskDelete(NULL);
+}
 
-struct State state;
+void AnotherTask(void * params)
+{
+    uint32_t i = 0;
+    while (true) {
+        i++;
+        vTaskDelay(100);
+        if (i > 1000) {
+            i = 0;
+        }
+    }
+    vTaskDelete(NULL);
+}
 
 int main(void)
 {
+    if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 0, NULL) != pdTRUE) {
+        goto reset_controller;
+    }
+
+    if (xTaskCreate(AnotherTask, (const signed char *)"second-task", 128, NULL, 0, NULL) != pdTRUE) {
+        goto reset_controller;
+    }
+
 	cli();
-	/*
-	sys_init();
-	rtc_init();
-	lcd_init();
-	
-	struct EvtQueue * evt = evt_new(DEFAULT_EVENT_TIMEOUT);
-	
-	keypad_init();
-	
-	th2028a_show(TH2028A_HEART_PIN);
-	th2028a_show(TH2028A_BAR1_PIN);
-	th2028a_show(TH2028A_BAR2_PIN);
-	th2028a_show(TH2028A_BAR3_PIN);
-	th2028a_show(TH2028A_BAR4_PIN);
-	th2028a_show(TH2028A_BAR5_PIN);
-	th2028a_show(TH2028A_BATTERY_PIN);
-	
-	sei();
-	
-	lcd_enable();
-	keypad_enable();
-	
-	struct EvtQueueItem * event = NULL;
-	while (1) {
-		event = evt_dequeue(evt);
-		switch (state.value) {
-			case 1:
-				break;
-			default:
-				break;
-		}
-		// TODO: dispatch event
-		if (event) {
-			evt_free_item(event);
-		}
-	}*/
+    
+    vTaskStartScheduler();
+
+reset_controller:
+
+    do {} while (true);
 	
 	return 0;
 }

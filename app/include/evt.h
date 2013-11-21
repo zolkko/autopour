@@ -2,6 +2,7 @@
 #ifndef EVT_H_
 #define EVT_H_
 
+/*
 typedef uint8_t evt_type;
 
 typedef uint8_t evt_timeout;
@@ -30,5 +31,5 @@ struct EvtQueueItem * evt_dequeue(struct EvtQueue * queue);
 void evt_free_item(struct EvtQueueItem * item);
 
 void evt_free(struct EvtQueue * queue);
-
+*/
 #endif
