@@ -4,8 +4,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#include "FreeRTOS.h"
-#include "task.h"
+#include <FreeRTOS.h>
+#include <task.h>
 
 
 /**
@@ -39,11 +39,11 @@ void AnotherTask(void * params)
 
 int main(void)
 {
-    if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 0, NULL) != pdTRUE) {
+    if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 1, NULL) != pdTRUE) {
         goto reset_controller;
     }
 
-    if (xTaskCreate(AnotherTask, (const signed char *)"second-task", 128, NULL, 0, NULL) != pdTRUE) {
+    if (xTaskCreate(AnotherTask, (const signed char *)"second-task", 128, NULL, 1, NULL) != pdTRUE) {
         goto reset_controller;
     }
 

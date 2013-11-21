@@ -22,6 +22,7 @@
 /* Compiler definitions include file. */
 #include "FreeRTOSConfig.h"
 
+#include <stdbool.h>
 #include <avr/io.h>
 #include <util/delay.h>
 #include <util/atomic.h>
@@ -178,15 +179,97 @@ void sys_osc_initialize(void)
     }
 }
 
+
+static bool find_timer_options(const uint32_t f_cpu, const uint16_t divider, const uint16_t tick_period, uint16_t * period, int32_t * error)
+{
+    *period = UINT16_MAX;
+    *error = INT32_MAX;
+
+    unsigned long after_divider = f_cpu / divider;
+    if (divider != 0) {
+        unsigned long tmp_period = after_divider / tick_period;
+        if (tmp_period != 0 && tmp_period <= UINT16_MAX) {
+            unsigned long tmp = tmp_period * tick_period * divider;
+            unsigned long err = f_cpu - tmp;
+            
+            if (err > INT32_MAX) {
+                return false;
+            }
+            
+            *error = (int32_t) err;
+            *period = (uint16_t) tmp_period;
+            return true;
+        }
+    }
+    return false;
+}
+
+
 /**
  * Initializes system tick clock and enabled particular interrupt
  * priority in PMIC
  */
 void sys_timer_initialize(void)
 {
-    SYS_TICK_TIMER.PER = SYS_TICK_PERIOD;
-    SYS_TICK_TIMER.CTRLA = SYS_TICK_DIVIDER;
+    uint8_t divider = TC_CLKSEL_DIV1_gc;
+    
+    int32_t min_error = INT32_MAX;
+    uint16_t min_period = UINT16_MAX;
+
+    int32_t current_error;
+    uint16_t current_period;
+    
+    if (find_timer_options(F_CPU, 1024, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV1024_gc;
+    }
+
+    if (find_timer_options(F_CPU, 256, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV256_gc;
+    }
+    
+    if (find_timer_options(F_CPU, 64, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV64_gc;
+    }
+    
+    if (find_timer_options(F_CPU, 8, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV8_gc;
+    }
+    
+    if (find_timer_options(F_CPU, 4, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV4_gc;
+    }
+    
+    if (find_timer_options(F_CPU, 2, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV2_gc;
+    }
+    
+    if (find_timer_options(F_CPU, 1, configTICK_RATE_HZ, &current_period, &current_error) && (min_error > current_error || (min_error == current_error && current_period < min_period))) {
+        min_error = current_error;
+        min_period = current_period;
+        divider = TC_CLKSEL_DIV1_gc;
+    }
+    
+    SYS_TICK_TIMER.PER = min_period;
+    SYS_TICK_TIMER.CTRLA = divider;
+#if (SYS_TICK_INTERRUPT_PRIORITY == PMIC_LOLVLEN_bm)
     SYS_TICK_TIMER.INTCTRLA = TC_OVFINTLVL_LO_gc;
+#elif (SYS_TICK_INTERRUPT_PRIORITY == PMIC_MEDLVLEN_bm)
+    SYS_TICK_TIMER.INTCTRLA = TC_OVFINTLVL_MED_gc
+#else
+    SYS_TICK_TIMER.INTCTRLA = TC_OVFINTLVL_HI_gc
+#endif
 	PMIC.CTRL |= SYS_TICK_INTERRUPT_PRIORITY;
 }
 
