@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSI - Sign-In</title>
+    <link rel="stylesheet" type="text/css" class="ui" href="/static/css/semantic.min.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/sign-in.css">
+    <script src="/static/js/zepto.min.js"></script>
+</head>
+<body>
+    <div class="main-container">
+        <div class="form-container">
+            <form action="/sign-in" method="post">
+                <div class="ui form segment">
+                    <div class="field">
+                        <label>Username</label>
+                        <div class="ui left labeled icon input">
+                            <input type="text" name="username" placeholder="Username" value="{{ session.get('sign-in-username', '') }}">
+                            <i class="user icon"></i>
+                            <div class="ui corner label">
+                                <i class="icon asterisk"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Password</label>
+                        <div class="ui left labeled icon input">
+                            <input type="password" name="password">
+                            <i class="lock icon"></i>
+                            <div class="ui corner label">
+                                <i class="icon asterisk"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Retype Password</label>
+                        <div class="ui left labeled icon input">
+                            <input type="password" name="repassword">
+                            <i class="lock icon"></i>
+                            <div class="ui corner label">
+                                <i class="icon asterisk"></i>
+                            </div>
+                        </div>
+                    </div>
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            <div id="err-msg" class="ui error message" style="display:block">
+                                {% for message in messages %}{{ message }}{% endfor %}
+                            </div>
+                        {% else %}
+                        <div id="err-msg" class="ui error message"></div>
+                        {% endif %}
+                    {% endwith %}
+                    <div id="submit" class="ui blue submit button">Register</div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        $(function () {
+            $('form').find('input').on('change', function (e) {
+                var $e = $(e.currentTarget),
+                        $field = $e.parents('field');
+                if (!$e.val()) {
+                    $field.addClass('error');
+                } else {
+                    $field.removeClass('error');
+                }
+                $('#err-msg').text('').hide();
+            });
+
+            $('#submit').on('click', function () {
+                var $form = $('form'),
+                        $login = $form.find('input[name="username"]'),
+                        login = $login.val(),
+                        $password = $form.find('input[name="password"]'),
+                        password = $password.val(),
+                        $repassword = $form.find('input[name="repassword"]'),
+                        repassword = $repassword.val();
+
+                function markError($input) {
+                    var $field = $input.parents('.field');
+                    $field.addClass('error');
+                }
+
+                if (!login) {
+                    markError($login);
+                }
+
+                if (!password) {
+                    markError($password);
+                }
+
+                if (!repassword) {
+                    markError($repassword);
+                }
+
+                if (login && password && repassword && password === repassword) {
+                    $form.submit();
+                } else if (password && repassword && password !== repassword) {
+                    $('#err-msg').text('Passwords do not match').show();
+                    markError( $form.find('input[name="password"], input[name="repassword"]'));
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AutoPour Monitor</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <link rel="stylesheet" type="text/css" class="ui" href="/static/css/semantic.min.css">
+    <script src="/static/js/require.js" data-main="/static/js/main.js"></script>
+    <style>
+        body {
+            background: #f6f6f6;
+            margin: 0; padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="ui pointing large menu main-menu">
+        <a href="/plants" class="active item"><i class="leaf icon"></i> Plant Stats</a>
+        <a href="/gateway" class="item"><i class="cloud icon"></i> Gateway Setup</a>
+        <a href="/device" class="item"><i class="desktop icon"></i> End-User Device(s)</a>
+        <div class="right blue menu">
+            <a href="/sign-out" class="item borderless"><i class="sign out icon"></i> Sign Out</a>
+        </div>
+    </div>
+
+    <div class="ui page grid">
+        <div class="sixteen wide column content">
+            <div class="ui inverted active dimmer"><div class="ui loader"></div></div>
+            {% block content %} {% endblock %}
+        </div>
+    </div>
+</body>
+</html>

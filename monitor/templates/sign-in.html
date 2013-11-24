@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSI - Sign-In</title>
+    <link rel="stylesheet" type="text/css" class="ui" href="/static/css/semantic.min.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/sign-in.css">
+    <script src="/static/js/zepto.min.js"></script>
+</head>
+<body>
+
+    <div class="main-container">
+        <div class="form-container">
+            <form action="/sign-in" method="post">
+                <div class="ui form segment">
+                    <div class="field">
+                        <label>Username</label>
+                        <div class="ui left labeled icon input">
+                            <input type="text" name="username" placeholder="Username" value="{{ session.get('sign-in-username', '') }}">
+                            <i class="user icon"></i>
+                            <div class="ui corner label">
+                                <i class="icon asterisk"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Password</label>
+                        <div class="ui left labeled icon input">
+                            <input type="password" name="password">
+                            <i class="lock icon"></i>
+                            <div class="ui corner label">
+                                <i class="icon asterisk"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% with messages = get_flashed_messages() %}
+                        {% if messages %}
+                            <div id="err-msg" class="ui error message" style="display:block">
+                                {% for message in messages %}{{ message }}{% endfor %}
+                            </div>
+                        {% else %}
+                        <div id="err-msg" class="ui error message"></div>
+                        {% endif %}
+                    {% endwith %}
+
+                    <button id="submit" class="ui blue submit button">Sign-In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        $(function () {
+            $('#submit').on('click', function () {
+                var $form = $('form'),
+                        $login = $form.find('input[name="username"]'),
+                        login = $login.val()
+                        $password = $form.find('input[name="password"]'),
+                        password = $password.val();
+
+                if (!login) {
+                    var $loginField = $login.parents('.field');
+                    $loginField.addClass('error');
+                    $login.one('change', function () {
+                        $loginField.removeClass('error');
+                    });
+                }
+
+                if (!password) {
+                    var $passwordField = $password.parents('.field');
+                    $passwordField.addClass('error');
+                    $password.one('change', function () {
+                        $passwordField.removeClass('error');
+                    });
+                }
+
+                if (login && password) {
+                    $form.submit();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
