@@ -11,11 +11,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+   
 
 /*
  * Initialize USART module
  */
-extern void usart_init();
+void usart_init();
+
 
 #ifdef __cplusplus
 }

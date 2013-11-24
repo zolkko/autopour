@@ -2,26 +2,131 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
+#include <FreeRTOS.h>
+#include <task.h>
+#include <queue.h>
+#include <semphr.h>
 #include "usart_stdio.h"
 
 
-static int uart_putchar(char, FILE *);
-
 static FILE _uart_stdout;
+
+#define USART_BUFFER_SIZE 32
+#define USART_FLUSH_PERIOD 10
+#define USART_FLUSH_TASK_PRIORITY 2
+
+static char * input_buffer;
+static uint8_t input_buffer_len;
+xSemaphoreHandle input_buffer_lock;
+
+static char * dma_buffer;
+static uint8_t dma_buffer_len;
+xSemaphoreHandle dma_buffer_lock;
+
+static char buffer_a[USART_BUFFER_SIZE];
+static char buffer_b[USART_BUFFER_SIZE];
+
+
+static void usart_print_buffer(void);
+static int usart_putchar(char c, FILE * stream);
+static void usart_print_buffer_task(void * params);
+static bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz);
+
+
+/**
+ * Function swaps input and DMA buffers and trigger DMA transfer.
+ */
+void usart_print_buffer(void)
+{
+    char * tmp_buff_ptr = dma_buffer;
+
+    dma_buffer = input_buffer;
+    dma_buffer_len = input_buffer_len;
+
+    input_buffer = tmp_buff_ptr;
+    input_buffer_len = 0;
+
+    DMA.CH0.SRCADDR0 = ((uint16_t) dma_buffer) & 0xff;
+    DMA.CH0.SRCADDR1 = (((uint16_t) dma_buffer) >> 8) & 0xff;
+    DMA.CH0.SRCADDR2 = 0;
+
+    DMA.CH0.TRFCNT = dma_buffer_len;
+    DMA.CH0.CTRLA |= DMA_CH_ENABLE_bm;    
+}
 
 
 /*
  * Prints character 'c' into UART module
  */
-static int uart_putchar(char c, FILE * stream)
+int usart_putchar(char c, FILE * stream)
 {
-    do { } while (((USART_SERIAL).STATUS & USART_DREIF_bm) == 0);
-    (USART_SERIAL).DATA = c;
-    return 0;
+    if (stream == stdout) {
+        if (xSemaphoreTake(input_buffer_lock, portMAX_DELAY)) {
+            if (input_buffer_len < USART_BUFFER_SIZE) {
+                input_buffer[input_buffer_len++] = c;
+                xSemaphoreGive(input_buffer_lock);
+                return 0;
+            } else {
+                /*
+                 * When input buffer overruns it is important to check scheduler state. Because if acquire a
+                 * mutex when scheduler is not running no one will be able to restore context or even
+                 * count passed ticks.
+                 */
+                portTickType ticks = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING ? portMAX_DELAY : 0;
+                if (xSemaphoreTake(dma_buffer_lock, ticks)) {
+                    usart_print_buffer();
+                    input_buffer[input_buffer_len++] = c;
+                    // Trigger DMA transfer if input buffer overrun
+                    xSemaphoreGive(input_buffer_lock);
+                    return 0;
+                } else {
+                    xSemaphoreGive(input_buffer_lock);
+                }
+            }
+        }
+    }
+    return 1;
 }
 
 
-static bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz)
+/**
+ * The task gets executed every USART_FLUSH_PERIOD and
+ * prints buffer using DMA to USART transfer.
+ */
+void usart_print_buffer_task(void * params)
+{
+    do {
+        if (xSemaphoreTake(input_buffer_lock, portMAX_DELAY)) {
+            if (input_buffer_len != 0) {
+                if (xSemaphoreTake(dma_buffer_lock, portMAX_DELAY)) {
+                    usart_print_buffer();
+                    // DMA buffer lock will be released in ISR
+                }
+            }
+            xSemaphoreGive(input_buffer_lock);
+        }
+        
+        vTaskDelay(USART_FLUSH_PERIOD);
+        
+    } while (true);
+}
+
+/**
+ * Interrupt handle should set transmission complete flag
+ */
+ISR (DMA_CH0_vect)
+{
+    if (DMA.INTFLAGS & DMA_CH0TRNIF_bm) {
+        DMA.INTFLAGS |= DMA_CH0TRNIF_bm;
+    } else {
+        DMA.INTFLAGS |= DMA_CH0ERRIF_bm;
+    }
+    xSemaphoreGiveFromISR(dma_buffer_lock, NULL);
+}
+
+
+bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz)
 {
 	int8_t exp;
 	uint32_t div;
@@ -120,18 +225,52 @@ static bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz)
 
 void usart_init()
 {
+    // Initialize input and DMA buffers
+    input_buffer = buffer_a;
+    input_buffer_len = 0;
+    input_buffer_lock = xSemaphoreCreateMutex();
+    xSemaphoreGive(input_buffer_lock);
+ 
+    dma_buffer = buffer_b;
+    dma_buffer_len = 0;
+    dma_buffer_lock = xSemaphoreCreateMutex();
+    xSemaphoreGive(dma_buffer_lock);
+    
+    // Initialize DMAC
+    DMA.CTRL = DMA_ENABLE_bm | DMA_PRIMODE_RR0123_gc;
+    
+    DMA.CH0.CTRLA = DMA_CH_SINGLE_bm | DMA_CH_BURSTLEN_1BYTE_gc;
+    DMA.CH0.CTRLB = DMA_CH_TRNINTLVL_LO_gc | DMA_CH_ERRINTLVL_LO_gc;
+    DMA.CH0.ADDRCTRL = DMA_CH_SRCDIR_INC_gc | DMA_CH_DESTDIR_FIXED_gc | DMA_CH_SRCRELOAD_TRANSACTION_gc;
+    
+    USART_t * selected_usart = &USART_SERIAL;
+    
+    DMA.CH0.TRIGSRC = DMA_CH_TRIGSRC_USARTC0_DRE_gc;
+    DMA.CH0.REPCNT = 1;
+
+    DMA.CH0.DESTADDR0 = ((uint16_t)&USART_SERIAL.DATA) & 0xff;
+    DMA.CH0.DESTADDR1 = (((uint16_t)&USART_SERIAL.DATA) >> 8) & 0xff;
+    DMA.CH0.DESTADDR2 = 0;
+
+    // Initialize USART module    
     PORTC.DIRSET = 0xff; // TODO: set only TX pin
     
     (USART_SERIAL).CTRLC = ((USART_SERIAL).CTRLC & (~USART_CMODE_gm)) | USART_CMODE_ASYNCHRONOUS_gc;
     (USART_SERIAL).CTRLC = (uint8_t)USART_SERIAL_CHAR_LENGTH | USART_SERIAL_PARITY | (USART_SERIAL_STOP_BIT ? USART_SBMODE_bm : 0);
     usart_set_baudrate(&USART_SERIAL, USART_SERIAL_BAUDRATE, F_CPU);
     (USART_SERIAL).CTRLB |= USART_TXEN_bm | USART_RXEN_bm;
+    
+    DMA.INTFLAGS |= DMA_CH0TRNIF_bm | DMA_CH0ERRIF_bm;
+    PMIC.CTRL |= PMIC_LOLVLEN_bm;
 
-    // Reassign standard output to the UART
-    _uart_stdout.put = uart_putchar;
+    // Reassign standard output to the USART module
+    _uart_stdout.put = usart_putchar;
     _uart_stdout.get = NULL;
     _uart_stdout.flags = _FDEV_SETUP_WRITE;
     _uart_stdout.udata = 0;
 
     stdout = &_uart_stdout;
+    
+    // Install task
+    xTaskCreate(usart_print_buffer_task, (const signed char *)"usart-printf", 128, NULL, configMAX_PRIORITIES - 1, NULL);
 }
