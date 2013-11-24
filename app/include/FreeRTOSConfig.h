@@ -1,7 +1,9 @@
 #ifndef FREERTOSCONFIG_H_
 #define FREERTOSCONFIG_H_
 
+#include <assert.h>
 #include "config.h"
+
 
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
@@ -14,7 +16,7 @@
 #define configMAX_TASK_NAME_LEN                 16
 #define configUSE_16_BIT_TICKS                  0
 #define configIDLE_SHOULD_YIELD                 1
-#define configUSE_MUTEXES                       0
+#define configUSE_MUTEXES                       1
 #define configUSE_RECURSIVE_MUTEXES             0
 #define configUSE_COUNTING_SEMAPHORES           0
 #define configQUEUE_REGISTRY_SIZE               10
@@ -49,7 +51,7 @@
 #define configMAX_API_CALL_INTERRUPT_PRIORITY   3 // dependent on processor and application
 
 /* Define to trap errors during development. */
-#define configASSERT(x)     if( ( x ) == 0 ) vAssertCalled( __FILE__, __LINE__ )
+#define configASSERT(x)                         assert(x)
 
 /* FreeRTOS MPU specific definitions. */
 #define configINCLUDE_APPLICATION_DEFINED_PRIVILEGED_FUNCTIONS 0
@@ -62,7 +64,7 @@
 #define INCLUDE_xResumeFromISR                  0
 #define INCLUDE_vTaskDelayUntil                 0
 #define INCLUDE_vTaskDelay                      1
-#define INCLUDE_xTaskGetSchedulerState          0
+#define INCLUDE_xTaskGetSchedulerState          1
 #define INCLUDE_xTaskGetCurrentTaskHandle       0
 #define INCLUDE_uxTaskGetStackHighWaterMark     0
 #define INCLUDE_xTaskGetIdleTaskHandle          0

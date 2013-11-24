@@ -170,6 +170,9 @@
     <Compile Include="include\th2028a.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="include\usart_stdio.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="rtos\croutine.c">
       <SubType>compile</SubType>
     </Compile>
@@ -203,6 +206,9 @@
     <Compile Include="rtos\include\task.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="rtos\include\timers.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="rtos\list.c">
       <SubType>compile</SubType>
     </Compile>
@@ -213,6 +219,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="rtos\portable\MemMang\heap_1.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="rtos\timers.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\usart_stdio.c">
       <SubType>compile</SubType>
     </Compile>
     <None Include="rtos\portable\MemMang\heap_2.c">

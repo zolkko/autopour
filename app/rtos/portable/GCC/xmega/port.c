@@ -289,7 +289,7 @@ ISR (TCC0_OVF_vect, ISR_NAKED)
      * call comes from the tick ISR.
      */
     portSAVE_CONTEXT();
-    vTaskIncrementTick();
+    xTaskIncrementTick();
     vTaskSwitchContext();
     portRESTORE_CONTEXT();
     asm volatile ( "reti" );

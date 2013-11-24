@@ -51,10 +51,11 @@ void AnotherTask(void * params)
     vTaskDelete(NULL);
 }
 
+
 int main(void)
 {
     usart_init();
-    
+
     if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 1, NULL) != pdTRUE) {
         goto reset_controller;
     }
@@ -64,6 +65,8 @@ int main(void)
     }
 
 	cli();
+    
+    printf("FreeRTOS 7.6 XMega initialized\r\n");
     
     vTaskStartScheduler();
 
