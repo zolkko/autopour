@@ -1,24 +1,43 @@
 #include <avr/io.h>
-#include "config.h"
+#include <util/atomic.h>
 #include "sys.h"
 
-/*
- * Initializes system clocks. For now only 2Mhz
- * and internal 32kHz clocks are used.
- */
-static void sys_init_clock(void);
 
-static void sys_init_clock(void)
+static void sys_osc_initialize(void);
+static void critical_write(volatile uint8_t * address, uint8_t value);
+
+
+void critical_write(volatile uint8_t * address, uint8_t value)
 {
-	PORTE.DIRSET = 1;
-	
-	// enable 32kHz internal oscillator
-	OSC.CTRL |= OSC_RC32KEN_bm;
-	do {
-	} while ((OSC.STATUS & OSC_RC32KRDY_bm) == 0);
+    volatile uint8_t * tmpAddr = address;
+    RAMPZ = 0;
+    asm volatile(
+    "movw r30,  %0"       "\n\t"
+    "ldi  r16,  %2"       "\n\t"
+    "out   %3, r16"       "\n\t"
+    "st     Z,  %1"       "\n\t"
+    :
+    : "r" (tmpAddr), "r" (value), "i"(CCP_IOREG_gc), "i" (&CCP)
+    : "r16", "r30", "r31"
+    );
 }
+
+
+/**
+ * Enables 2MHz oscillator and set it as the system
+ * clock source
+ */
+void sys_osc_initialize(void)
+{
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        OSC.CTRL |= OSC_RC2MEN_bm;
+        do {} while(!(OSC.STATUS & OSC_RC2MRDY_bm));
+        critical_write(&(CLK.CTRL), CLK_SCLKSEL_RC32M_gc);
+    }
+}
+
 
 void sys_init(void)
 {
-	sys_init_clock();
+    sys_osc_initialize();
 }

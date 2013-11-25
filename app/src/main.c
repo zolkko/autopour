@@ -8,8 +8,8 @@
 #include <task.h>
 
 #include <stdio.h>
+#include "sys.h"
 #include "usart_stdio.h"
-
 
 
 /**
@@ -54,6 +54,7 @@ void AnotherTask(void * params)
 
 int main(void)
 {
+    sys_init();
     usart_init();
 
     if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 1, NULL) != pdTRUE) {

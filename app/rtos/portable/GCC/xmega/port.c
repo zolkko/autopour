@@ -147,37 +147,8 @@ extern volatile tskTCB * volatile pxCurrentTCB;
                     "pop    r0                       \n\t"    \
                 );
 
-static void critical_write(volatile uint8_t * address, uint8_t value);
-static void sys_osc_initialize(void);
+
 static void sys_timer_initialize(void);
-
-void critical_write(volatile uint8_t * address, uint8_t value)
-{
-    volatile uint8_t * tmpAddr = address;
-    RAMPZ = 0;
-    asm volatile(
-        "movw r30,  %0"       "\n\t"
-        "ldi  r16,  %2"       "\n\t"
-        "out   %3, r16"       "\n\t"
-        "st     Z,  %1"       "\n\t"
-        :
-        : "r" (tmpAddr), "r" (value), "i"(CCP_IOREG_gc), "i" (&CCP)
-        : "r16", "r30", "r31"
-    );
-}
-
-/**
- * Enables 2MHz oscillator and set it as the system
- * clock source
- */
-void sys_osc_initialize(void)
-{
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-        OSC.CTRL |= OSC_RC2MEN_bm;
-        do {} while(!(OSC.STATUS & OSC_RC2MRDY_bm));
-        critical_write(&(CLK.CTRL), CLK_SCLKSEL_RC32M_gc);
-    }
-}
 
 
 static bool find_timer_options(const uint32_t f_cpu, const uint16_t divider, const uint16_t tick_period, uint16_t * period, int32_t * error)
@@ -444,7 +415,6 @@ portSTACK_TYPE *pxPortInitialiseStack(portSTACK_TYPE *pxTopOfStack, pdTASK_CODE 
  */
 portBASE_TYPE xPortStartScheduler(void)
 {
-    sys_osc_initialize();
     sys_timer_initialize();
 
     portRESTORE_CONTEXT();
