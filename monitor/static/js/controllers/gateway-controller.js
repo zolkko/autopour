@@ -5,10 +5,15 @@ define([
     'use strict';
 
     var GatewayController = Controller.extend({
+        menuItem: null,
+        getMenuItem: function () {
+            if (!this.menuItem) {
+                this.menuItem = document.querySelector('a.item[href="/gateway"]');
+            }
+            return this.menuItem;
+        },
         index: function(params) {
             this.disableDimmer();
-            document.querySelector('a.item[href="/gateway"]').className += ' active';
-
             this.view = new ControlView({
                 container: document.getElementsByClassName('content')[0]
             });

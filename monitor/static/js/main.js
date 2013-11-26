@@ -6,7 +6,8 @@ require.config({
 		underscore: 'lodash.min',
         backbone: 'exoskeleton.min',
         handlebars: 'handlebars',
-        chaplin: 'chaplin.min'
+        chaplin: 'chaplin.min',
+        kinetic: 'kinetic-v4.7.4.min'
 	},
 	shim: {
         jquery: { exports: '$' },

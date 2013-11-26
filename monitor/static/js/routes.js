@@ -11,6 +11,7 @@
     return function(match) {
         match('', 'plants#index');
         match('plants', 'plants#index');
+        match('plants/:id', 'plants#details'),
         match('gateway', 'gateway#index');
     };
 }));

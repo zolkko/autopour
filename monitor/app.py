@@ -50,10 +50,11 @@ def unauthorized_handler():
 
 @app.route('/')
 @app.route('/plants')
+@app.route('/plants/<int:plant_id>')
 @app.route('/gateway')
 @app.route('/device')
 @login_required
-def index():
+def index(*args, **kwargs):
     """ Application entry point. Browser should access only this particular view.
     The rest of APIs are JSON based. """
     return render_template('index.html')
@@ -155,4 +156,3 @@ def ensure_db():
 if __name__ == '__main__':
     ensure_db()
     app.run()
-

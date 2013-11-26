@@ -2,13 +2,12 @@
     'use strict';
     if (typeof define === 'function' && define.amd) {
         return define([
-            'chaplin'/*,
-            'views/site-view'*/
+            'chaplin'
         ], factory);
     } else {
         window.BaseController = factory(window.Chaplin/*, window.SiteView*/);
     }
-}(function (Chaplin/*, SiteView*/) {
+}(function (Chaplin) {
     'use strict';
 
     var Controller = Chaplin.Controller.extend({
@@ -27,11 +26,25 @@
                 this.getDimmer().className += ' active';
             }
         },
-        beforeAction: function () {
-            var i,
-                elements =  document.querySelectorAll('.main-menu a.active');
-            for (i = 0; i < elements.length; i++) {
-                elements[i].className = elements[i].className.replace(/\bactive\b/, '');
+        beforeAction: function (o, route, data) {
+            this.setActiveMenu(route);
+        },
+        getMenuItem: function () {
+            return null;
+        },
+        setActiveMenu: function (route) {
+            if (!route || !route.previous || route.controller != route.previous.controller) {
+                var i,
+                    elements =  document.querySelectorAll('.main-menu a.active'),
+                    menuItem = this.getMenuItem();
+
+                for (i = 0; i < elements.length; i++) {
+                    elements[i].className = elements[i].className.replace(/\bactive\b/, '');
+                }
+
+                if (menuItem) {
+                    menuItem.className += ' active';
+                }
             }
         }
     });
