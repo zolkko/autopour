@@ -146,6 +146,12 @@
     <Folder Include="src" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="include\cc1101.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\cc1101_xmega.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="include\config.h">
       <SubType>compile</SubType>
     </Compile>
@@ -222,6 +228,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="rtos\timers.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\cc1101.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\usart_stdio.c">
