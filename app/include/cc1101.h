@@ -21,6 +21,7 @@
 #ifndef CC1101_H_
 #define CC1101_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #define CCx_IOCFG2       0x00        // GDO2 output pin configuration
@@ -127,7 +128,7 @@ typedef bool (*cc1101_chip_ready) (void);
 typedef uint8_t (*cc1101_chip_write) (uint8_t data);
 
 
-typedef _rf_handle {
+typedef struct _rf_handle {
     cc1101_chip_select  select;
     cc1101_chip_release release;
     cc1101_chip_ready   ready;
