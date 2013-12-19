@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <avr/io.h>
 #include "cc1101_xmega.h"
+#include "cc1101.h"
 
 
 void __impl_hw_initialize(void)
@@ -78,7 +79,7 @@ bool __impl_hw_ready(void)
 }
 
 
-void __impl_handle_initialize(const rf_handle_t * rf)
+void __impl_handle_initialize(rf_handle_t * rf)
 {
     rf->select = &__impl_hw_select;
     rf->release = &__impl_hw_release;

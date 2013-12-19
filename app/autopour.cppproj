@@ -233,6 +233,9 @@
     <Compile Include="src\cc1101.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="src\cc1101_xmega.c">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="src\usart_stdio.c">
       <SubType>compile</SubType>
     </Compile>
