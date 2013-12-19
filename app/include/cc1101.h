@@ -24,6 +24,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+
 #define CCx_IOCFG2       0x00        // GDO2 output pin configuration
 #define CCx_IOCFG1       0x01        // GDO1 output pin configuration
 #define CCx_IOCFG0D      0x02        // GDO0 output pin configuration
@@ -136,7 +137,53 @@ typedef struct _rf_handle {
 } rf_handle_t;
 
 
+#ifdef __AVR__
+#include "cc1101_xmega.h"
+#define cc1101_hw_initialize() __impl_hw_initialize()
+#define cc1101_initialize(X)   __impl_handle_initialize( (X) )
+#else
+#warning cc1101_hw_initialize and cc1101_initialize function must be defined.
+#endif
+
+
+/*
+ * Chip select
+ */
+#define cc1101_select(X)  ( (X)->select() )
+
+
+/*
+ * Chip deselect / release
+ */
+#define cc1101_release(X) ( (X)->release() )
+
+
+/*
+ * Power-on reset sequence
+ */
 void cc1101_poweron_reset(const rf_handle_t * rf);
 
 
+/*
+ * Reads byte from located by specified address. Returns the first by
+ * which was received during issuing address on the SPI line
+ *
+ * Chip select/release should be called by the caller code
+ */
+uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data);
+
+
+uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size);
+
+
+/*
+ * Writes data into specified address
+ */
+uint8_t cc1101_write(const rf_handle_t * rf, uint8_t addr, uint8_t data);
+
+
+uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size);
+
+
 #endif /* CC1101_H_ */
+

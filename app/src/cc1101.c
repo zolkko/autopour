@@ -9,6 +9,17 @@
 #endif
 
 
+/*
+ *
+ * Initial value for this should be
+ *
+ * uint8_t data;
+ * cc1101_read(rf, CCx_IOCFG0D, &data);
+ * rf->release();
+ *
+ */
+
+
 uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data)
 {
     while ( !rf->ready() );
@@ -16,6 +27,30 @@ uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data)
     uint8_t result = rf->write(addr | 0x80);
     *data = rf->write(0);
     
+    return result;
+}
+
+
+uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
+{
+    while ( !rf->ready() );
+
+    uint8_t result = rf->write(addr | 0xc0);
+    for (uint8_t i = 0; i < size; i++) {
+        data[i] = rf->write(0);
+    }
+    return result;
+}
+
+
+uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
+{
+    while ( !rf->ready() );
+
+    uint8_t result = rf->write(addr | 0x40);
+    for (uint8_t i = 0; i < size; i++) {
+        rf->write(data[i]);
+    }
     return result;
 }
 
@@ -56,28 +91,11 @@ void cc1101_poweron_reset(const rf_handle_t * rf)
     while ( !rf->ready() );
     rf->write(CCx_SRES);
     while ( !rf->ready() );
-    rf->release();
-    
-    // Test for SO goes low and
-    // setup GDO0 function
-    
-    uint8_t data;
-    cc1101_read(rf, CCx_IOCFG0D, &data);
-    rf->release();
+    rf->release(); 
 }
 
 /*
 
-void cc1101_write(uint8_t reg, uint8_t data)
-{
-    CC1101_CHIP_SELECT();
-    while ( !CC1101_CHIP_NOT_RDY() );
-    
-    spi_rw(reg | 0x80);
-    spi_rw(data);
-    
-    CC1101_CHIP_RELEASE();
-}
 
 void cc1101_initialize_registers(void)
 {
