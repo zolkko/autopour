@@ -14,8 +14,10 @@
 #include "usart_stdio.h"
 
 
-void TestFunction(void * params)
+void app_task(void * params)
 {
+    printf("FreeRTOS 7.6 XMega initialized...\r\n");
+
     uint32_t i = 0;
     while (true) {
         i++;
@@ -29,25 +31,7 @@ void TestFunction(void * params)
             i = 0;
         }
     }
-    vTaskDelete(NULL);
-}
-
-
-void AnotherTask(void * params)
-{
-    uint32_t i = 0;
-    while (true) {
-        i++;
-        
-        vTaskSuspendAll();
-        printf("task-2\r\n");
-        xTaskResumeAll();
-        
-        vTaskDelay(100);
-        if (i > 1000) {
-            i = 0;
-        }
-    }
+    
     vTaskDelete(NULL);
 }
 
@@ -64,17 +48,11 @@ int main(void)
     
     cc1101_poweron_reset(&rf);
 
-    if (xTaskCreate(TestFunction, (const signed char *)"main-task", 128, NULL, 1, NULL) != pdTRUE) {
-        goto reset_controller;
-    }
-
-    if (xTaskCreate(AnotherTask, (const signed char *)"second-task", 128, NULL, 1, NULL) != pdTRUE) {
+    if (xTaskCreate(app_task, (const signed char *)"main-task", 256, NULL, 1, NULL) != pdTRUE) {
         goto reset_controller;
     }
 
 	cli();
-    
-    printf("FreeRTOS 7.6 XMega initialized\r\n");
     
     vTaskStartScheduler();
 
