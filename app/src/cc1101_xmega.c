@@ -16,6 +16,9 @@
 #define PIN_SO  PIN6_bm
 #define PIN_SCK PIN7_bm
 
+// SPI module
+#define CC1101_SPI SPID
+
 
 ISR(PORTA_INT0_vect)
 {
@@ -58,7 +61,7 @@ void __impl_hw_initialize(void)
     PORTD.PIN6CTRL = PORT_OPC_PULLUP_gc;
 
     // Enable SPI module
-    SPID.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_PRESCALER_DIV4_gc;
+    CC1101_SPI.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_PRESCALER_DIV4_gc;
 }
 
 
@@ -76,13 +79,13 @@ bool __impl_chip_ready(void);
 
 uint8_t __impl_hw_write(uint8_t data)
 {
-    SPID.DATA = data;
+    CC1101_SPI.DATA = data;
     while (true) {
         uint8_t flags = SPID.STATUS;
         if ((flags & SPI_IF_bm) != 0) {
-            return SPID.DATA;
+            return CC1101_SPI.DATA;
         } else if ((flags & SPI_WRCOL_bm) != 0) {
-            SPID.DATA = data;
+            CC1101_SPI.DATA = data;
         }
     }
 }
@@ -113,3 +116,13 @@ void __impl_handle_initialize(rf_handle_t * rf)
     rf->ready = &__impl_hw_ready;
     rf->write = &__impl_hw_write;
 }
+
+
+/*
+const rf_handle_t rf_handle = {
+    __impl_hw_select,
+    __impl_hw_release,
+    __impl_hw_ready,
+    __impl_hw_write
+};
+*/

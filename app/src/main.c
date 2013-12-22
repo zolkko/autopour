@@ -18,18 +18,12 @@ void app_task(void * params)
 {
     printf("FreeRTOS 7.6 XMega initialized...\r\n");
 
-    uint32_t i = 0;
     while (true) {
-        i++;
-        
         vTaskSuspendAll();
         printf("task-1\r\n");
         xTaskResumeAll();
         
         vTaskDelay(10);
-        if (i > 2000) {
-            i = 0;
-        }
     }
     
     vTaskDelete(NULL);
