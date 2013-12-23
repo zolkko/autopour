@@ -1,0 +1,16 @@
+%% vim:set et tabstop=4 shiftwidth=4 nu nowrap fileencoding=utf-8:
+%%
+
+{application, front,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  cowboy
+                 ]},
+  {mod, { front_app, []}},
+  {env, []}
+ ]}.
