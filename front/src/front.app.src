@@ -5,6 +5,7 @@
  [
   {description, ""},
   {vsn, "1"},
+  {modules, [front_app, front_sup, front_storage, index_handler, sensor_handler]},
   {registered, []},
   {applications, [
                   kernel,

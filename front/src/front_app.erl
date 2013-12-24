@@ -2,7 +2,9 @@
 %%
 -module(front_app).
 
+
 -behaviour(application).
+
 
 %% Application callbacks
 -export([start/2, stop/1]).
@@ -13,17 +15,20 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    lager:info("Application start routine has been executed"),
+    lager:info("connecting to redis server"),
+    {ok, RedisClient} = eredis:start_link(),
+    lager:info("connection to redis server has been established"),
     Dispatch = cowboy_router:compile([
         {'_', [
-            {"/", index_handler, []}
+            {"/", index_handler, [
+                {redis, RedisClient}
+            ]},
+            {"/sensor/[:sensor_id]", sensor_handler, [RedisClient]}
         ]}
     ]),
-    lager:info("Application routes have been compiled"),
     {ok, _} = cowboy:start_http(http, 100, [{port, 8281}], [
         {env, [{dispatch, Dispatch}]}
     ]),
-    lager:info("HTTP server has been started"),
     front_sup:start_link().
 
 

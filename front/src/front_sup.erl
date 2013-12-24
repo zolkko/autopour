@@ -18,8 +18,6 @@
 %% ===================================================================
 
 start_link() ->
-    error_logger:info_msg("Supervisor initialization", []),
-    lager:info("Supervisor initializes module"),
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 %% ===================================================================
@@ -27,6 +25,5 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    lager:info("Initializing supervisor..."),
     {ok, { {one_for_one, 5, 10}, []} }.
 
