@@ -12,6 +12,10 @@
                   stdlib,
                   cowboy
                  ]},
-  {mod, { front_app, []}},
+
+  {mod, { front_app, [
+    {redis, ["localhost", 6380, 0, ""]}
+  ]}},
+
   {env, []}
  ]}.
