@@ -12,47 +12,68 @@
 
 static FILE _uart_stdout;
 
-#define USART_BUFFER_SIZE 32
+#define USART_BUFFER_SIZE  16
 #define USART_FLUSH_PERIOD 10
-#define USART_FLUSH_TASK_PRIORITY 2
-
-static char * input_buffer;
-static uint8_t input_buffer_len;
-xSemaphoreHandle input_buffer_lock;
-
-static char * dma_buffer;
-static uint8_t dma_buffer_len;
-xSemaphoreHandle dma_buffer_lock;
-
-static char buffer_a[USART_BUFFER_SIZE];
-static char buffer_b[USART_BUFFER_SIZE];
 
 
-static void usart_print_buffer(void);
+static char __input_buffer[USART_BUFFER_SIZE];
+static volatile char * input_buffer = __input_buffer;
+static volatile uint8_t input_buffer_len;
+static xSemaphoreHandle input_buffer_lock;
+
+
+static char __double_buffer[USART_BUFFER_SIZE];
+static volatile char * double_buffer = __double_buffer;
+static xSemaphoreHandle dma_buffer_lock;
+
+
+static void usart_trigger_dma_transaction(void);
+
+static void usart_swap_buffers(void);
+
 static int usart_putchar(char c, FILE * stream);
+
 static void usart_print_buffer_task(void * params);
+
 static bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz);
 
 
 /**
  * Function swaps input and DMA buffers and trigger DMA transfer.
+ * Both DMA and Input buffer locks should be acquired before calling
+ * this function.
  */
-void usart_print_buffer(void)
+void usart_trigger_dma_transaction(void)
 {
-    char * tmp_buff_ptr = dma_buffer;
-
-    dma_buffer = input_buffer;
-    dma_buffer_len = input_buffer_len;
-
-    input_buffer = tmp_buff_ptr;
-    input_buffer_len = 0;
-
-    DMA.CH0.SRCADDR0 = ((uint16_t) dma_buffer) & 0xff;
-    DMA.CH0.SRCADDR1 = (((uint16_t) dma_buffer) >> 8) & 0xff;
+    DMA.CH0.SRCADDR0 = ((uint16_t) input_buffer) & 0xff;
+    DMA.CH0.SRCADDR1 = (((uint16_t) input_buffer) >> 8) & 0xff;
     DMA.CH0.SRCADDR2 = 0;
+    DMA.CH0.TRFCNT = input_buffer_len;
+    DMA.CH0.CTRLA |= DMA_CH_ENABLE_bm;
+}
 
-    DMA.CH0.TRFCNT = dma_buffer_len;
-    DMA.CH0.CTRLA |= DMA_CH_ENABLE_bm;    
+
+void usart_swap_buffers(void)
+{
+    char * tmp_pbuff = double_buffer;
+    double_buffer = input_buffer;
+    input_buffer = tmp_pbuff;
+    input_buffer_len = 0;
+}
+
+
+/**
+ * Interrupt handle sets transmission complete flag
+ * when DMA transaction is done.
+ */
+ISR (DMA_CH0_vect)
+{
+    if (DMA.INTFLAGS & DMA_CH0TRNIF_bm) {
+        DMA.INTFLAGS |= DMA_CH0TRNIF_bm;
+    } else {
+        DMA.INTFLAGS |= DMA_CH0ERRIF_bm;
+    }
+    xSemaphoreGiveFromISR(dma_buffer_lock, NULL);
 }
 
 
@@ -75,9 +96,11 @@ int usart_putchar(char c, FILE * stream)
                  */
                 portTickType ticks = xTaskGetSchedulerState() == taskSCHEDULER_RUNNING ? portMAX_DELAY : 0;
                 if (xSemaphoreTake(dma_buffer_lock, ticks)) {
-                    usart_print_buffer();
+                    usart_trigger_dma_transaction();
+                    usart_swap_buffers();
                     input_buffer[input_buffer_len++] = c;
-                    // Trigger DMA transfer if input buffer overrun
+                    // Trigger DMA transfer if input buffer overrun, DMA lock will be
+                    // released in ISR when transfer complete.
                     xSemaphoreGive(input_buffer_lock);
                     return 0;
                 } else {
@@ -89,7 +112,6 @@ int usart_putchar(char c, FILE * stream)
     return 1;
 }
 
-
 /**
  * The task gets executed every USART_FLUSH_PERIOD and
  * prints buffer using DMA to USART transfer.
@@ -100,7 +122,8 @@ void usart_print_buffer_task(void * params)
         if (xSemaphoreTake(input_buffer_lock, portMAX_DELAY)) {
             if (input_buffer_len != 0) {
                 if (xSemaphoreTake(dma_buffer_lock, portMAX_DELAY)) {
-                    usart_print_buffer();
+                    usart_trigger_dma_transaction();
+                    usart_swap_buffers();
                     // DMA buffer lock will be released in ISR
                 }
             }
@@ -110,19 +133,6 @@ void usart_print_buffer_task(void * params)
         vTaskDelay(USART_FLUSH_PERIOD);
         
     } while (true);
-}
-
-/**
- * Interrupt handle should set transmission complete flag
- */
-ISR (DMA_CH0_vect)
-{
-    if (DMA.INTFLAGS & DMA_CH0TRNIF_bm) {
-        DMA.INTFLAGS |= DMA_CH0TRNIF_bm;
-    } else {
-        DMA.INTFLAGS |= DMA_CH0ERRIF_bm;
-    }
-    xSemaphoreGiveFromISR(dma_buffer_lock, NULL);
 }
 
 
@@ -226,13 +236,10 @@ bool usart_set_baudrate(USART_t *usart, uint32_t baud, uint32_t cpu_hz)
 void usart_init()
 {
     // Initialize input and DMA buffers
-    input_buffer = buffer_a;
     input_buffer_len = 0;
     input_buffer_lock = xSemaphoreCreateMutex();
     xSemaphoreGive(input_buffer_lock);
  
-    dma_buffer = buffer_b;
-    dma_buffer_len = 0;
     dma_buffer_lock = xSemaphoreCreateMutex();
     xSemaphoreGive(dma_buffer_lock);
     

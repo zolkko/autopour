@@ -9,56 +9,112 @@
 #endif
 
 
+extern bool __impl_cc1101_is_data(const rf_handle_t * rf);
+
+extern void cc1101_impl_wait_chip_ready(const rf_handle_t * rf);
+
+
+#define cc1101_wait_chip_ready(X) cc1101_impl_wait_chip_ready(X)
+
+
+bool cc1101_is_data(const rf_handle_t * rf)
+{
+    return __impl_cc1101_is_data(rf);
+}
+
+
+/**
+ * Before making actual read the code tests [3:0] status bits to
+ * determine available bytes in RX buffer.
+ */
 uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data)
 {
-    while ( !rf->ready() );
-    
+    rf->select();
+
+    cc1101_wait_chip_ready(rf);
+
     uint8_t result = rf->write(addr | 0x80);
-    *data = rf->write(0);
     
+    if ((result & 0x07) != 0) {
+        if (data != NULL) {
+            *data = rf->write(0);
+        } else {
+            rf->write(0);
+        }
+    } else {
+        if (data != NULL) {
+            *data = 0;
+        }
+    }
+
+    rf->release();
+
     return result;
 }
 
 
 uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
 {
-    while ( !rf->ready() );
+    rf->select();
+
+    cc1101_wait_chip_ready(rf);
 
     uint8_t result = rf->write(addr | 0xc0);
     for (uint8_t i = 0; i < size; i++) {
         data[i] = rf->write(0);
     }
-    return result;
-}
 
+    rf->release();
 
-uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
-{
-    while ( !rf->ready() );
-
-    uint8_t result = rf->write(addr | 0x40);
-    for (uint8_t i = 0; i < size; i++) {
-        rf->write(data[i]);
-    }
     return result;
 }
 
 
 uint8_t cc1101_write(const rf_handle_t * rf, uint8_t addr, uint8_t data)
 {
-    while ( !rf->ready() );
-    
+    rf->select();
+
+    cc1101_wait_chip_ready(rf);
+
     uint8_t result = rf->write(addr);
-    rf->write(data);
-    
+    if ((result & 0x07) != 0) {
+        rf->write(data);
+    }
+
+    rf->release();
+
+    return result;
+}
+
+
+uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
+{
+    rf->select();
+
+    cc1101_wait_chip_ready(rf);
+
+    uint8_t result = rf->write(addr | 0x40);
+    for (uint8_t i = 0; i < size; i++) {
+        rf->write(data[i]);
+    }
+
+    rf->release();
+
     return result;
 }
 
 
 uint8_t cc1101_strobe(const rf_handle_t * rf, uint8_t addr)
 {
-    while ( ! rf->ready() );
-    return rf->write(addr);
+    rf->select();
+
+    cc1101_wait_chip_ready(rf);
+
+    uint8_t result = rf->write(addr);
+
+    rf->release();
+
+    return result;
 }
 
 /**
@@ -132,4 +188,98 @@ void cc1101_initialize_registers(const rf_handle_t * rf)
     cc1101_write(rf, CCx_PKTCTRL0, 0x05); // PKTCTRL0  Packet automation control.
     cc1101_write(rf, CCx_ADDR, 0x00);     // ADDR      Device address.
     cc1101_write(rf, CCx_PKTLEN, CCx_PACKT_LEN);
+}
+
+
+/**
+ * TODO: only one execution thread should be able to 
+ */
+void cc1101_transmit(const rf_handle_t * rf, uint8_t * data, uint8_t size, uint8_t src_addr, uint8_t dst_addr)
+{
+    uint8_t stat;
+    uint8_t tx_buff_len;
+    
+    cc1101_strobe_ide(rf);
+    cc1101_strobe_flush_tx(rf);
+    
+    stat = cc1101_read(rf, CCx_TXBYTES, &tx_buff_len);
+    
+    cc1101_write(rf, CCx_TXFIFO, size + 2);
+    cc1101_write(rf, CCx_TXFIFO, dst_addr);
+    cc1101_write(rf, CCx_TXFIFO, src_addr);
+    cc1101_burst_write(rf, CCx_TXFIFO, data, size);
+    
+    stat = cc1101_read(rf, CCx_TXBYTES, &tx_buff_len);
+    
+    cc1101_strobe_transmit(rf);
+ 
+    while (1) {
+        stat = cc1101_read(rf, CCx_TXBYTES, &tx_buff_len);
+        // test transmit buffer length ignoring underflow flag
+        if (0 == (tx_buff_len & 0x7f)) {
+            break;
+        } else {
+            cc1101_strobe_transmit(rf);
+        }
+    }
+}
+
+
+uint8_t cc1101_rssi_decode(uint8_t rssi_enc) {
+    unsigned char rssi;
+    
+    // is actually dataRate dependant, but for simplicity assumed to be fixed.
+    unsigned char rssi_offset = 74;
+
+    // RSSI is coded as 2's complement see section 17.3 RSSI of the cc1100 datasheet
+    if (rssi_enc >= 128)
+        rssi = (( rssi_enc - 256) >> 1) - rssi_offset;
+    else
+        rssi = (rssi_enc >> 1) - rssi_offset;
+        
+    return rssi;
+}
+
+
+// receive data via RF, rxData must be at least CCx_PACKT_LEN bytes long
+bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi)
+{
+    uint8_t stat;
+
+    cc1101_read(rf, CCx_RXFIFO, data_len);
+    if (*data_len == 0)
+    {
+        return false;
+    }
+    
+    cc1101_read(rf, CCx_RXFIFO, dest_addr);
+    cc1101_read(rf, CCx_RXFIFO, src_addr);
+    *data_len -= 2;  // discard address bytes from payloadLen
+
+    cc1101_burst_read(rf, CCx_RXFIFO, data, *data_len);
+    
+    if (rssi != NULL) {
+        cc1101_read(rf, CCx_RXFIFO, rssi);
+        *rssi = cc1101_rssi_decode(*rssi);
+    } else {
+        cc1101_read(rf, CCx_RXFIFO, NULL);
+    }
+
+    if (lqi != NULL) {
+        stat = cc1101_read(rf, CCx_RXFIFO, lqi);
+        if ((*lqi & 0x80) == 0) {
+            return false;
+        }
+        *lqi = *lqi & 0x7F; // strip off the CRC bit
+    } else {
+        stat = cc1101_read(rf, CCx_RXFIFO, NULL);
+    }
+
+    // handle potential RX overflows by flushing the RF FIFO as described in section 10.1 of the CC 1100 datasheet
+    if ((stat & 0xF0) == 0x60) { //Modified by Icing. When overflows, STATE[2:0] = 110
+        cc1101_strobe(rf, CCx_SFRX); // flush the RX buffer
+        return false;
+    }
+
+    return true;
 }

@@ -213,6 +213,36 @@ uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data,
 
 void cc1101_initialize_registers(const rf_handle_t * rf);
 
+void cc1101_transmit(const rf_handle_t * rf, uint8_t * data, uint8_t size, uint8_t src_addr, uint8_t dest_addr);
+
+
+#include <FreeRTOS.h>
+#include <stdbool.h>
+
+bool __impl_cc1101_has_data(portTickType blockTime);
+
+bool __impl_cc1101_has_data_release();
+
+#define cc1101_has_data(T) __impl_cc1101_has_data(T)
+
+#define cc1101_has_data_release(T) __impl_cc1101_has_data_release()
+
+bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi);
+
+
+/*
+ * Shortcuts for strobes
+ */
+
+
+#define cc1101_strobe_flush_tx(X) cc1101_strobe(X, CCx_SFTX)
+
+#define cc1101_strobe_flush_rx(X) cc1101_strobe(X, CCx_SFRX)
+
+#define cc1101_strobe_ide(X) cc1101_strobe(X, CCx_SIDLE)
+
+#define cc1101_strobe_transmit(X) cc1101_strobe(X, CCx_STX)
+
 
 #endif /* CC1101_H_ */
 
