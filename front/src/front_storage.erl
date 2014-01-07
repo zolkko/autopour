@@ -5,6 +5,7 @@
 
 -export([version/1, version/2]).
 -export([redis_connection_options/1]).
+-export([sensor/2, sensor/3]).
 
 -define(VERSION_KEY, "version").
 -define(VERSION_DEFAULT, <<"0.0.1-dev">>).
@@ -34,6 +35,31 @@ version(Client, Version) ->
             Version;
         _ ->
             ?VERSION_DEFAULT
+    end.
+
+
+sensor_key(SensorId) ->
+    << <<"sensor-">>/binary, SensorId/binary >>.
+
+
+%% ===================================================================
+%% Returns a sensor description
+%% ===================================================================
+sensor(Client, SensorId) ->
+    case eredis:q(Client, ["GET", sensor_key(SensorId)]) of
+        {ok, SensorData} ->
+            {ts, 0};
+        _ ->
+            not_found
+    end.
+
+
+sensor(Client, SensorId, SensorData) ->
+    case eredis:q(Client, ["SET", sensor_key(SensorId), <<"">>]) of
+        {ok, _} ->
+            true;
+        _ ->
+            false
     end.
 
 
