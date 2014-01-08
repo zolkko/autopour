@@ -19,24 +19,29 @@ void app_task(void * params)
     printf("FreeRTOS 7.6 XMega initialized\r\n");
 
     rf_handle_t * rf = (rf_handle_t *)params;
-    
-    // try to identify radio-IC
-    printf("Detecting radio...");
-    uint8_t chip_version = 0;
-    uint8_t stat = cc1101_read(rf, CCx_VERSION, &chip_version);
-    printf("\t[OK]\r\n");
-    printf("Radio cc1101 version %d\t[OK]\r\n", chip_version);
 
-    cc1101_strobe_ide(rf);
+    uint8_t part_number = 0;
+    cc1101_read(rf, CCx_PARTNUM, &part_number);
+    printf("Transceiver cc1101 part number %d\r\n", part_number);
+
+    uint8_t chip_version = 0;
+    cc1101_read(rf, CCx_VERSION, &chip_version);
+    printf("Transceiver cc1101 version %d\r\n", chip_version);
+
+    uint8_t status = cc1101_strobe_ide(rf);
+    while ((status & CC1101_STATUS_STATE_bm) != CC1101_STATUS_STATE_IDLE_bm) {
+        status = cc1101_nop(rf);
+    }
+    // Auto calibration should be turned on
     cc1101_strobe_flush_rx(rf);
     cc1101_strobe_flush_tx(rf);
 
     uint8_t counter = 0;
     while (true) {
-        char * buff[20];
-        int written = snprintf(buff, 20, "main-task %d\r\n", counter);
+        uint8_t buff[20];
+        int written = snprintf((char *) buff, 20, "main-task %d\r\n", counter);
         if (written > 0) {
-            printf(buff);
+            printf((const char *)buff);
             cc1101_transmit(rf, buff, written, 0, 0);
         }
         vTaskDelay(1000);

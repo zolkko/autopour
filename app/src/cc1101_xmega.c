@@ -89,7 +89,7 @@ void __impl_hw_initialize(void)
     PORTD.PIN6CTRL = PORT_OPC_PULLUP_gc;
 
     // Enable SPI module
-    CC1101_SPI.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_PRESCALER_DIV4_gc;
+    CC1101_SPI.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;
 }
 
 
@@ -112,7 +112,7 @@ bool __impl_chip_ready(void);
 void cc1101_impl_wait_chip_ready(const rf_handle_t * rf)
 {
     while ( !rf->ready() ) {
-        taskYIELD();
+        // taskYIELD();
     }
 }
 
@@ -120,11 +120,13 @@ void cc1101_impl_wait_chip_ready(const rf_handle_t * rf)
 uint8_t __impl_hw_write(uint8_t data)
 {
     CC1101_SPI.DATA = data;
+    
     while (true) {
-        uint8_t flags = SPID.STATUS;
-        if ((flags & SPI_IF_bm) != 0) {
-            return CC1101_SPI.DATA;
-        } else if ((flags & SPI_WRCOL_bm) != 0) {
+        uint8_t flags = CC1101_SPI.STATUS;
+        if (flags & SPI_IF_bm) {
+            uint8_t result = CC1101_SPI.DATA;
+            return result;
+        } else if (flags & SPI_WRCOL_bm) {
             CC1101_SPI.DATA = data;
         }
     }

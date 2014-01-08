@@ -208,12 +208,12 @@ uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, 
 uint8_t cc1101_write(const rf_handle_t * rf, uint8_t addr, uint8_t data);
 
 
-uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size);
+uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, const uint8_t * data, uint8_t data_size);
 
 
 void cc1101_initialize_registers(const rf_handle_t * rf);
 
-void cc1101_transmit(const rf_handle_t * rf, uint8_t * data, uint8_t size, uint8_t src_addr, uint8_t dest_addr);
+bool cc1101_transmit(const rf_handle_t * rf, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
 
 
 #include <FreeRTOS.h>
@@ -230,6 +230,53 @@ bool __impl_cc1101_has_data_release();
 bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi);
 
 
+/**
+ * Status byte bit-masks
+ */
+
+#define CC1101_STATUS_STATE_bm           0x70
+#define CC1101_STATUS_FIFO_BYTES_bm      0x0f
+#define CC1101_STATUS_CHIP_RDYn_bm       0x80
+
+#define CC1101_STATUS_STATE_IDLE_bm      0x00
+#define CC1101_STATUS_STATE_RX_bm        0x10
+#define CC1101_STATUS_STATE_TX_bm        0x20
+#define CC1101_STATUS_STATE_FSTXON_bm    0x30
+#define CC1101_STATUS_STATE_CALIBRATE_bm 0x40
+#define CC1101_STATUS_STATE_SETTLING_bm  0x50
+#define CC1101_STATUS_STATE_OVERFLOW_bm  0x60
+#define CC1101_STATUS_STATE_UNDERFLOW_bm 0x70
+
+
+/*
+ * Main Radio Control State Machine
+ */
+#define CC1101_MARC_bm                  0x1f
+#define CC1101_MARC_SLEEP_gc            0x00
+#define CC1101_MARC_IDLE_gc             0x01
+#define CC1101_MARC_XOFF_gc             0x02
+#define CC1101_MARC_VCOON_MC_gc         0x03
+#define CC1101_MARC_REGON_MC_gc         0x04
+#define CC1101_MARC_MANCAL_gc           0x05
+#define CC1101_MARC_VCOON_gc            0x06
+#define CC1101_MARC_REGON_gc            0x07
+#define CC1101_MARC_STARTCAL_gc         0x08
+#define CC1101_MARC_BWBOOST_gc          0x09
+#define CC1101_MARC_FS_LOCK_gc          0x0a
+#define CC1101_MARC_IFADCON_gc          0x0b
+#define CC1101_MARC_ENDCAL_gc           0x0c
+#define CC1101_MARC_RX_gc               0x0d
+#define CC1101_MARC_RX_END_gc           0x0e
+#define CC1101_MARC_RX_RST_gc           0x0f
+#define CC1101_MARC_TXRX_SWITCH_gc      0x10
+#define CC1101_MARC_RXFIFO_OVERFLOW_gc  0x11
+#define CC1101_MARC_FSTXON_gc           0x12
+#define CC1101_MARC_TX_gc               0x13
+#define CC1101_MARC_TX_END_gc           0x14
+#define CC1101_MARC_RXTX_SWITCH_gc      0x15
+#define CC1101_MARC_TXFIFO_UNDERFLOW_gc 0x16
+
+
 /*
  * Shortcuts for strobes
  */
@@ -237,11 +284,17 @@ bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, 
 
 #define cc1101_strobe_flush_tx(X) cc1101_strobe(X, CCx_SFTX)
 
+#define cc1101_strobe_fast_tx(X) cc1101_strobe(X, CCx_SFSTXON)
+
 #define cc1101_strobe_flush_rx(X) cc1101_strobe(X, CCx_SFRX)
 
 #define cc1101_strobe_ide(X) cc1101_strobe(X, CCx_SIDLE)
 
 #define cc1101_strobe_transmit(X) cc1101_strobe(X, CCx_STX)
+
+#define cc1101_strobe_calibrate(X) cc1101_strobe(X, CCx_SCAL)
+
+#define cc1101_nop(X) cc1101_strobe(X, CCx_SNOP)
 
 
 #endif /* CC1101_H_ */

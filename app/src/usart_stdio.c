@@ -55,7 +55,7 @@ void usart_trigger_dma_transaction(void)
 
 void usart_swap_buffers(void)
 {
-    char * tmp_pbuff = double_buffer;
+    volatile char * tmp_pbuff = double_buffer;
     double_buffer = input_buffer;
     input_buffer = tmp_pbuff;
     input_buffer_len = 0;
@@ -249,8 +249,6 @@ void usart_init()
     DMA.CH0.CTRLA = DMA_CH_SINGLE_bm | DMA_CH_BURSTLEN_1BYTE_gc;
     DMA.CH0.CTRLB = DMA_CH_TRNINTLVL_LO_gc | DMA_CH_ERRINTLVL_LO_gc;
     DMA.CH0.ADDRCTRL = DMA_CH_SRCDIR_INC_gc | DMA_CH_DESTDIR_FIXED_gc | DMA_CH_SRCRELOAD_TRANSACTION_gc;
-    
-    USART_t * selected_usart = &USART_SERIAL;
     
     DMA.CH0.TRIGSRC = DMA_CH_TRIGSRC_USARTC0_DRE_gc;
     DMA.CH0.REPCNT = 1;
