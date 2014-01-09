@@ -14,8 +14,6 @@ extern bool __impl_cc1101_is_data(const rf_handle_t * rf);
 extern void cc1101_impl_wait_chip_ready(const rf_handle_t * rf);
 
 
-#define cc1101_wait_chip_ready(X) cc1101_impl_wait_chip_ready(X)
-
 
 bool cc1101_is_data(const rf_handle_t * rf)
 {
@@ -23,89 +21,50 @@ bool cc1101_is_data(const rf_handle_t * rf)
 }
 
 
-/**
- * Before making actual read the code tests [3:0] status bits to
- * determine available bytes in RX buffer.
- */
 uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data)
 {
-    rf->select();
-
-    cc1101_wait_chip_ready(rf);
-
     uint8_t result = rf->write(addr | 0x80);
     if (data != NULL) {
         *data = rf->write(0);
     } else {
         rf->write(0);
     }
-
-    rf->release();
-
     return result;
 }
 
 
 uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size)
 {
-    rf->select();
-
-    cc1101_wait_chip_ready(rf);
-
-    uint8_t result = rf->write(addr | 0xc0);
+    uint8_t status = rf->write(addr | 0xc0);
     for (uint8_t i = 0; i < size; i++) {
         data[i] = rf->write(0);
     }
-
-    rf->release();
-
-    return result;
+    return status;
 }
 
 
 uint8_t cc1101_write(const rf_handle_t * rf, uint8_t addr, uint8_t data)
 {
-    rf->select();
-
-    cc1101_wait_chip_ready(rf);
-
     uint8_t status = rf->write(addr);
     rf->write(data);
-
-    rf->release();
-
     return status;
 }
 
 
 uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, const uint8_t * data, uint8_t data_size)
 {
-    rf->select();
-
-    cc1101_wait_chip_ready(rf);
-
-    uint8_t result = rf->write(addr | 0x40);
+    uint8_t status = rf->write(addr | 0x40);
     for (uint8_t i = 0; i < data_size; i++) {
         rf->write(data[i]);
     }
-
-    rf->release();
-
-    return result;
+    return status;
 }
 
 
 uint8_t cc1101_strobe(const rf_handle_t * rf, uint8_t addr)
 {
-    rf->select();
-
-    cc1101_wait_chip_ready(rf);
-
-    uint8_t result = rf->write(addr);
-
-    rf->release();
-
-    return result;
+    uint8_t status = rf->write(addr);
+    return status;
 }
 
 /**
@@ -133,6 +92,9 @@ void cc1101_poweron_reset(const rf_handle_t * rf)
 
 void cc1101_initialize_registers(const rf_handle_t * rf)
 {
+    rf->select();
+    cc1101_wait_chip_ready(rf);
+    
     cc1101_write(rf, CCx_FSCTRL1, 0x08);  // FSCTRL1   Frequency synthesizer control.
     cc1101_write(rf, CCx_FSCTRL0, 0x00);  // FSCTRL0   Frequency synthesizer control.
     
@@ -179,20 +141,29 @@ void cc1101_initialize_registers(const rf_handle_t * rf)
     cc1101_write(rf, CCx_PKTCTRL0, 0x05); // PKTCTRL0  Packet automation control.
     cc1101_write(rf, CCx_ADDR, 0x00);     // ADDR      Device address.
     cc1101_write(rf, CCx_PKTLEN, CCx_PACKT_LEN);
+    
+    rf->release();
 }
 
 
 bool cc1101_transmit(const rf_handle_t * rf, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr)
 {
     uint8_t status;
+    
+    rf->select();
+    cc1101_wait_chip_ready(rf);
 
     cc1101_write(rf, CCx_TXFIFO, data_size + 2);
     cc1101_write(rf, CCx_TXFIFO, dst_addr);
     cc1101_write(rf, CCx_TXFIFO, src_addr);
     status = cc1101_burst_write(rf, CCx_TXFIFO, data, data_size);
+    
+    rf->release();
+    
+    
+    rf->select();
+    cc1101_wait_chip_ready(rf);
 
-    // See http://www.ti.com/lit/ds/symlink/cc1101.pdf "17.5 Clear Channel Assessment (CCA)"
-    // Wait until state become IDLE. Because NOP operator is shorter it is used first.
     while ((status & CC1101_STATUS_STATE_bm) != CC1101_STATUS_STATE_IDLE_bm) {
         status = cc1101_nop(rf);
     }
@@ -203,24 +174,33 @@ bool cc1101_transmit(const rf_handle_t * rf, const uint8_t * data, uint8_t data_
     } while ((marc_state & CC1101_MARC_bm) != CC1101_MARC_IDLE_gc);
 
     cc1101_strobe_transmit(rf);
+    
+    rf->release();
 
     do {
+        
+        rf->select();
+        cc1101_wait_chip_ready(rf);
         status = cc1101_nop(rf);
 
         switch (status & CC1101_STATUS_STATE_bm) {
             case CC1101_STATUS_STATE_TX_bm:
             case CC1101_STATUS_STATE_FSTXON_bm:
+                rf->release();
                 continue;
 
             case CC1101_STATUS_STATE_CALIBRATE_bm:
             case CC1101_STATUS_STATE_SETTLING_bm:
+                rf->release();
                 continue;
 
             case CC1101_STATUS_STATE_UNDERFLOW_bm:
                 cc1101_strobe_flush_tx(rf);
+                rf->release();
                 return false;
 
             default:
+                rf->release();
                 return ((status & CC1101_STATUS_FIFO_BYTES_bm) > 0);
         }
     } while (true);
@@ -284,4 +264,31 @@ bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, 
     }
 
     return true;
+}
+
+/*
+ * Changed version
+ */
+
+#include "rf.h"
+#include "ccx_hw.h"
+
+
+#define DECL_HW(X, V) ccx_hw_t * X = (ccx_hw_t *) V->priv
+
+
+
+
+
+uint8_t cc1101_version(const rf_t * self)
+{
+    DECL_HW(hw, self);
+    hw->
+}
+
+
+void cc1101_init(rf_t * rf, ccx_hw_t * hw)
+{
+    rf->version = &cc1101_version;
+    rf->priv = hw;
 }

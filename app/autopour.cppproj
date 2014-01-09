@@ -152,6 +152,12 @@
     <Compile Include="include\cc1101_xmega.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="include\ccx_hw.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\ccx_hw_xmega.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="include\config.h">
       <SubType>compile</SubType>
     </Compile>
@@ -165,6 +171,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\lcd.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="include\rf.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="include\rtc.h">
@@ -234,6 +243,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\cc1101_xmega.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ccx_hw_xmega.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\ccx_hw_xmega_def.c">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\usart_stdio.c">

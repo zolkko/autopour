@@ -73,11 +73,11 @@ void __impl_hw_initialize(void)
     // SO_CLONE is used because I think that PIN_SO cannnot be read out when it is
     // configured in SPI mode, but I am not sure.
     PORTA.DIRCLR = PIN_GDO0 | PIN_GDO2 | PIN_SO_CLONE;
-    PORTA.INTCTRL = PORT_INT1LVL_MED_gc | PORT_INT0LVL_MED_gc;
-    PORTA.INT0MASK = PIN_GDO2;
-    PORTA.INT1MASK = PIN_GDO0;
-    PORTA.PIN0CTRL |= PORT_ISC_RISING_gc;
-    PORTA.PIN1CTRL |= PORT_ISC_RISING_gc;
+    //PORTA.INTCTRL = PORT_INT1LVL_MED_gc | PORT_INT0LVL_MED_gc;
+    //PORTA.INT0MASK = PIN_GDO2;
+    //PORTA.INT1MASK = PIN_GDO0;
+    //PORTA.PIN0CTRL |= PORT_ISC_RISING_gc;
+    //PORTA.PIN1CTRL |= PORT_ISC_RISING_gc;
     
     PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
@@ -85,8 +85,8 @@ void __impl_hw_initialize(void)
     // to support situations when cc1101 module is not
     // connected or is broken.
 
-    PORTD.DIRCLR = PIN_SO;
-    PORTD.PIN6CTRL = PORT_OPC_PULLUP_gc;
+    // PORTD.DIRCLR = PIN_SO;
+    // PORTD.PIN6CTRL = PORT_OPC_PULLUP_gc;
 
     // Enable SPI module
     CC1101_SPI.CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;

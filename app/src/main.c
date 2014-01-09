@@ -13,12 +13,18 @@
 #include "cc1101.h"
 #include "usart_stdio.h"
 
+#include "ccx_hw.h"
+#include "ccx_hw_xmega.h"
+
 
 void app_task(void * params)
 {
     printf("FreeRTOS 7.6 XMega initialized\r\n");
 
     rf_handle_t * rf = (rf_handle_t *)params;
+    
+    cc1101_select(rf);
+    cc1101_wait_chip_ready(rf);
 
     uint8_t part_number = 0;
     cc1101_read(rf, CCx_PARTNUM, &part_number);
@@ -35,6 +41,7 @@ void app_task(void * params)
     // Auto calibration should be turned on
     cc1101_strobe_flush_rx(rf);
     cc1101_strobe_flush_tx(rf);
+    cc1101_release(rf);
 
     uint8_t counter = 0;
     while (true) {
@@ -52,6 +59,10 @@ void app_task(void * params)
 }
 
 
+ccx_hw_t rf_hw;
+extern ccx_xmega_hw_t ccx_hw_default;
+
+
 int main(void)
 {
     rf_handle_t rf;
@@ -60,6 +71,8 @@ int main(void)
 
     sys_init();
     usart_init();
+
+    ccx_hw_xmega_init(&rf_hw, &ccx_hw_default);
 
     cc1101_hw_initialize();
     cc1101_initialize(&rf);

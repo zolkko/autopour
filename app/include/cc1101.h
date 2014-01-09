@@ -230,6 +230,9 @@ bool __impl_cc1101_has_data_release();
 bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi);
 
 
+#define cc1101_wait_chip_ready(X) cc1101_impl_wait_chip_ready(X)
+
+
 /**
  * Status byte bit-masks
  */
@@ -295,6 +298,14 @@ bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, 
 #define cc1101_strobe_calibrate(X) cc1101_strobe(X, CCx_SCAL)
 
 #define cc1101_nop(X) cc1101_strobe(X, CCx_SNOP)
+
+
+
+#include "rf.h"
+#include "ccx_hw.h"
+
+
+void cc1101_init(rf_t * rf, ccx_hw_t * hw);
 
 
 #endif /* CC1101_H_ */
