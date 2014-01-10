@@ -391,6 +391,7 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 	rf->part_number = &cc1101_part_number;
 	rf->transmit = &cc1101_transmit;
 	rf->receive = &cc1101_receive;
+	rf->can_receive = NULL;
     rf->priv = hw;
 
 	cc1101_reset(hw);
