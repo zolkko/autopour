@@ -21,8 +21,9 @@
 #ifndef CC1101_H_
 #define CC1101_H_
 
-#include <stdint.h>
-#include <stdbool.h>
+// header bytes
+#define CC1101_RW_BIT_bm    0x80
+#define CC1101_BURST_BIT_bm 0x40
 
 
 #define CCx_IOCFG2       0x00        // GDO2 output pin configuration
@@ -146,93 +147,6 @@
 #define GDOx_CFG_CLK_XOSC192     0x3f
 
 
-typedef void (*cc1101_chip_select) (void);
-
-typedef void (*cc1101_chip_release) (void);
-
-typedef bool (*cc1101_chip_ready) (void);
-
-typedef uint8_t (*cc1101_chip_write) (uint8_t data);
-
-
-typedef struct _rf_handle {
-    cc1101_chip_select  select;
-    cc1101_chip_release release;
-    cc1101_chip_ready   ready;
-    cc1101_chip_write   write;
-} rf_handle_t;
-
-
-#ifdef __AVR__
-#include "cc1101_xmega.h"
-#define cc1101_hw_initialize() __impl_hw_initialize()
-#define cc1101_initialize(X)   __impl_handle_initialize( (X) )
-#else
-#warning cc1101_hw_initialize and cc1101_initialize function must be defined.
-#endif
-
-
-/*
- * Chip select
- */
-#define cc1101_select(X)  ( (X)->select() )
-
-
-/*
- * Chip deselect / release
- */
-#define cc1101_release(X) ( (X)->release() )
-
-
-/*
- * Power-on reset sequence
- */
-void cc1101_poweron_reset(const rf_handle_t * rf);
-
-
-/*
- * Reads byte from located by specified address. Returns the first by
- * which was received during issuing address on the SPI line
- *
- * Chip select/release should be called by the caller code
- */
-uint8_t cc1101_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data);
-
-
-uint8_t cc1101_burst_read(const rf_handle_t * rf, uint8_t addr, uint8_t * data, uint8_t size);
-
-
-/*
- * Writes data into specified address
- */
-uint8_t cc1101_write(const rf_handle_t * rf, uint8_t addr, uint8_t data);
-
-
-uint8_t cc1101_burst_write(const rf_handle_t * rf, uint8_t addr, const uint8_t * data, uint8_t data_size);
-
-
-void cc1101_initialize_registers(const rf_handle_t * rf);
-
-bool cc1101_transmit(const rf_handle_t * rf, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
-
-
-#include <FreeRTOS.h>
-#include <stdbool.h>
-
-bool __impl_cc1101_has_data(portTickType blockTime);
-
-bool __impl_cc1101_has_data_release();
-
-#define cc1101_has_data(T) __impl_cc1101_has_data(T)
-
-#define cc1101_has_data_release(T) __impl_cc1101_has_data_release()
-
-bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi);
-
-
-#define cc1101_wait_chip_ready(X) cc1101_impl_wait_chip_ready(X)
-
-
 /**
  * Status byte bit-masks
  */
@@ -254,59 +168,33 @@ bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, 
 /*
  * Main Radio Control State Machine
  */
-#define CC1101_MARC_bm                  0x1f
-#define CC1101_MARC_SLEEP_gc            0x00
-#define CC1101_MARC_IDLE_gc             0x01
-#define CC1101_MARC_XOFF_gc             0x02
-#define CC1101_MARC_VCOON_MC_gc         0x03
-#define CC1101_MARC_REGON_MC_gc         0x04
-#define CC1101_MARC_MANCAL_gc           0x05
-#define CC1101_MARC_VCOON_gc            0x06
-#define CC1101_MARC_REGON_gc            0x07
-#define CC1101_MARC_STARTCAL_gc         0x08
-#define CC1101_MARC_BWBOOST_gc          0x09
-#define CC1101_MARC_FS_LOCK_gc          0x0a
-#define CC1101_MARC_IFADCON_gc          0x0b
-#define CC1101_MARC_ENDCAL_gc           0x0c
-#define CC1101_MARC_RX_gc               0x0d
-#define CC1101_MARC_RX_END_gc           0x0e
-#define CC1101_MARC_RX_RST_gc           0x0f
-#define CC1101_MARC_TXRX_SWITCH_gc      0x10
-#define CC1101_MARC_RXFIFO_OVERFLOW_gc  0x11
-#define CC1101_MARC_FSTXON_gc           0x12
-#define CC1101_MARC_TX_gc               0x13
-#define CC1101_MARC_TX_END_gc           0x14
-#define CC1101_MARC_RXTX_SWITCH_gc      0x15
-#define CC1101_MARC_TXFIFO_UNDERFLOW_gc 0x16
-
-
-/*
- * Shortcuts for strobes
- */
-
-
-#define cc1101_strobe_flush_tx(X) cc1101_strobe(X, CCx_SFTX)
-
-#define cc1101_strobe_fast_tx(X) cc1101_strobe(X, CCx_SFSTXON)
-
-#define cc1101_strobe_flush_rx(X) cc1101_strobe(X, CCx_SFRX)
-
-#define cc1101_strobe_ide(X) cc1101_strobe(X, CCx_SIDLE)
-
-#define cc1101_strobe_transmit(X) cc1101_strobe(X, CCx_STX)
-
-#define cc1101_strobe_calibrate(X) cc1101_strobe(X, CCx_SCAL)
-
-#define cc1101_nop(X) cc1101_strobe(X, CCx_SNOP)
-
-
-
-#include "rf.h"
-#include "ccx_hw.h"
+#define CC1101_MARC_bm                   0x1f
+#define CC1101_MARC_SLEEP_gc             0x00
+#define CC1101_MARC_IDLE_gc              0x01
+#define CC1101_MARC_XOFF_gc              0x02
+#define CC1101_MARC_VCOON_MC_gc          0x03
+#define CC1101_MARC_REGON_MC_gc          0x04
+#define CC1101_MARC_MANCAL_gc            0x05
+#define CC1101_MARC_VCOON_gc             0x06
+#define CC1101_MARC_REGON_gc             0x07
+#define CC1101_MARC_STARTCAL_gc          0x08
+#define CC1101_MARC_BWBOOST_gc           0x09
+#define CC1101_MARC_FS_LOCK_gc           0x0a
+#define CC1101_MARC_IFADCON_gc           0x0b
+#define CC1101_MARC_ENDCAL_gc            0x0c
+#define CC1101_MARC_RX_gc                0x0d
+#define CC1101_MARC_RX_END_gc            0x0e
+#define CC1101_MARC_RX_RST_gc            0x0f
+#define CC1101_MARC_TXRX_SWITCH_gc       0x10
+#define CC1101_MARC_RXFIFO_OVERFLOW_gc   0x11
+#define CC1101_MARC_FSTXON_gc            0x12
+#define CC1101_MARC_TX_gc                0x13
+#define CC1101_MARC_TX_END_gc            0x14
+#define CC1101_MARC_RXTX_SWITCH_gc       0x15
+#define CC1101_MARC_TXFIFO_UNDERFLOW_gc  0x16
 
 
 void cc1101_init(rf_t * rf, ccx_hw_t * hw);
 
 
 #endif /* CC1101_H_ */
-

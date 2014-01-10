@@ -16,7 +16,7 @@ typedef struct ccx_hw {
 
 #define ccx_chip_select(X)  X->chip_select(X)
 
-#define ccx_write(X)        X->write(X)
+#define ccx_write(X, A)     X->write(X, A)
 
 #define ccx_ready(X)        X->ready(X)
 
