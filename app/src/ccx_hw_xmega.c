@@ -4,6 +4,7 @@
 #include <avr/io.h>
 #include "ccx_hw.h"
 #include "ccx_hw_xmega.h"
+#include "FreeRTOS.h"
 
 
 static void __impl_chip_select(const ccx_hw_t * self);
@@ -115,11 +116,20 @@ void ccx_hw_xmega_init_spi(SPI_t * spi)
 }
 
 
+void __impl_wait_ready(const ccx_hw_t * hw)
+{
+	while ( !ccx_ready(hw) ) {
+		portYIELD();
+	}
+}
+
+
 ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 {
     hw_if->chip_select = &__impl_chip_select;
     hw_if->write = &__impl_write;
     hw_if->ready = &__impl_ready;
+	hw_if->wait_ready = &__impl_wait_ready;
     hw_if->gdo0 = &__impl_gdo0;
     hw_if->gdo2 = &__impl_gdo2;
     hw_if->chip_release = &__impl_chip_release;
