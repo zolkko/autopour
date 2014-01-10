@@ -14,56 +14,6 @@
 #define _DELAY_US(x) _delay_us(x)
 #endif
 
-/*
-
-// receive data via RF, rxData must be at least CCx_PACKT_LEN bytes long
-bool cc1101_receive(const rf_handle_t * rf, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dest_addr, uint8_t * rssi , uint8_t * lqi)
-{
-    uint8_t stat;
-
-    cc1101_read(rf, CCx_RXFIFO, data_len);
-    if (*data_len == 0)
-    {
-        return false;
-    }
-    
-    cc1101_read(rf, CCx_RXFIFO, dest_addr);
-    cc1101_read(rf, CCx_RXFIFO, src_addr);
-    *data_len -= 2;  // discard address bytes from payloadLen
-
-    cc1101_burst_read(rf, CCx_RXFIFO, data, *data_len);
-    
-    if (rssi != NULL) {
-        cc1101_read(rf, CCx_RXFIFO, rssi);
-        *rssi = cc1101_rssi_decode(*rssi);
-    } else {
-        cc1101_read(rf, CCx_RXFIFO, NULL);
-    }
-
-    if (lqi != NULL) {
-        stat = cc1101_read(rf, CCx_RXFIFO, lqi);
-        if ((*lqi & 0x80) == 0) {
-            return false;
-        }
-        *lqi = *lqi & 0x7F; // strip off the CRC bit
-    } else {
-        stat = cc1101_read(rf, CCx_RXFIFO, NULL);
-    }
-
-    // handle potential RX overflows by flushing the RF FIFO as described in section 10.1 of the CC 1100 datasheet
-    if ((stat & 0xF0) == 0x60) { //Modified by Icing. When overflows, STATE[2:0] = 110
-        cc1101_strobe(rf, CCx_SFRX); // flush the RX buffer
-        return false;
-    }
-
-    return true;
-}
-*/
-
-#include "rf.h"
-#include "ccx_hw.h"
-
-
 static uint8_t cc1101_version(const rf_t * self);
 
 static uint8_t cc1101_part_number(const rf_t * self);
@@ -96,6 +46,11 @@ static uint8_t cc1101_strobe(const ccx_hw_t * self, uint8_t addr);
 
 #define cc1101_strobe_nop(X)       cc1101_strobe(X, CCx_SNOP)
 
+static inline void cc1101_wait_transmission_allowed(const ccx_hw_t * self);
+
+static inline uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self);
+
+static int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dst_addr);
 
 #define DECL_HW(X, V) ccx_hw_t * X = (ccx_hw_t *) V->priv
 
@@ -308,66 +263,125 @@ uint8_t cc1101_rssi_decode(uint8_t rssi_enc)
 int8_t cc1101_transmit(const rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr)
 {
 	DECL_HW(hw, self);
-	uint8_t status;
-	
+
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
 
 	cc1101_write(hw, CCx_TXFIFO, data_size + 2);
 	cc1101_write(hw, CCx_TXFIFO, dst_addr);
 	cc1101_write(hw, CCx_TXFIFO, src_addr);
-	status = cc1101_burst_write(hw, CCx_TXFIFO, data, data_size);
+	cc1101_burst_write(hw, CCx_TXFIFO, data, data_size);
 	ccx_chip_release(hw);
 
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
 
-	status &= CC1101_STATUS_STATE_bm;
-	while (status != CC1101_STATUS_STATE_IDLE_bm && status != CC1101_STATUS_STATE_RX_bm) {
-		status = cc1101_strobe(hw, CCx_SNOP) & CC1101_STATUS_STATE_bm;
-	}
+	cc1101_wait_transmission_allowed(hw);
 
-	uint8_t marc_state;
-	do {
-		cc1101_read(hw, CCx_MARCSTATE, &marc_state);
-		marc_state &= CC1101_MARC_bm;
-	} while (marc_state != CC1101_MARC_IDLE_gc && marc_state != CC1101_MARC_RX_gc && marc_state != CC1101_MARC_RX_END_gc && marc_state != CC1101_MARC_RX_RST_gc);
+	cc1101_strobe_transmit(hw);
 
-	cc1101_strobe(hw, CCx_STX);
+	uint8_t result = cc1101_wait_transmission_finished(hw);
+
 	ccx_chip_release(hw);
 
+	return result;
+}
+
+
+/**
+ * As described in Errata http://www.ti.com/lit/er/swrz020d/swrz020d.pdf during transmission
+ * it is important to read status byte twice and only once both statuses are equals it value
+ * is considered valid.
+ */
+void cc1101_wait_transmission_allowed(const ccx_hw_t * self)
+{
+	uint8_t state1;
+	uint8_t state2;
+
 	do {
-		ccx_chip_select(hw);
-		ccx_wait_ready(hw);
+		cc1101_read(self, CCx_MARCSTATE, &state1);
+		state1 &= CC1101_MARC_bm;
 
-		status = cc1101_strobe_nop(hw);
+		cc1101_read(self, CCx_MARCSTATE, &state2);
+		state2 &= CC1101_MARC_bm;
 
-		switch (status & CC1101_STATUS_STATE_bm) {
-			case CC1101_STATUS_STATE_TX_bm:
-			case CC1101_STATUS_STATE_FSTXON_bm:
-				ccx_chip_release(hw);
-				continue;
+	} while (state1 != state2 &&
+             CC1101_MARC_IDLE_gc != state1 &&
+			 CC1101_MARC_RX_gc != state1 &&
+			 CC1101_MARC_RX_END_gc != state1 &&
+			 CC1101_MARC_RX_RST_gc != state1);
+}
 
-			case CC1101_STATUS_STATE_CALIBRATE_bm:
-			case CC1101_STATUS_STATE_SETTLING_bm:
-				ccx_chip_release(hw);
-				continue;
 
-			case CC1101_STATUS_STATE_UNDERFLOW_bm:
-				cc1101_strobe_flush_tx(hw);
-				ccx_chip_release(hw);
+/**
+ * Method assumes that TXOFF moved state-machine into IDLE state after the
+ * transfer operation complete.
+ */
+uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self)
+{
+	uint8_t status1 = 0;
+	uint8_t status2 = 0;
+
+	do {
+		cc1101_read(self, CCx_MARCSTATE, &status1);
+		status1 &= CC1101_MARC_bm;
+
+		cc1101_read(self, CCx_MARCSTATE, &status2);
+		status2 &= CC1101_MARC_bm;
+
+		if (status1 != status2) {
+			continue;
+		}
+
+		switch (status1 & CC1101_MARC_bm) {
+			case CC1101_MARC_TXFIFO_UNDERFLOW_gc:
+				cc1101_strobe_flush_tx(self);
 				return RF_TRANSMIT_UNDERFLOW;
 
-			case CC1101_STATUS_STATE_RX_bm:
-				cc1101_strobe_transmit(hw);
-				ccx_chip_release(hw);
+			case CC1101_MARC_IDLE_gc:
+				return RF_TRANSMIT_OK;
+
+			case CC1101_MARC_RX_END_gc:
+			case CC1101_MARC_RX_RST_gc:
+			case CC1101_MARC_RX_gc:
+				// TX-if-CCA
+				cc1101_strobe_transmit(self);
 				continue;
 
 			default:
-				ccx_chip_release(hw);
-				return (status & CC1101_STATUS_FIFO_BYTES_bm) > 0 ? RF_TRANSMIT_OK : RF_TRANSMIT_FAIL;
+				// the rest of states are considered as transitional
+				continue;
 		}
 	} while (true);
+}
+
+
+// TODO: In order to make the interface more generic I need to remove RSSI and LQI parameters
+// receive data via RF, rxData must be at least CCx_PACKT_LEN bytes long
+int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dst_addr)
+{
+	DECL_HW(hw, self);
+	uint8_t stat;
+
+	ccx_chip_select(hw);
+	ccx_wait_ready(hw);
+
+	cc1101_read(hw, CCx_RXFIFO, data_len);
+	if (*data_len == 0)
+	{
+		return RF_RECEIVE_FAIL;
+	}
+
+	cc1101_read(hw, CCx_RXFIFO, dst_addr);
+	cc1101_read(hw, CCx_RXFIFO, src_addr);
+	*data_len -= 2;
+
+	cc1101_burst_read(hw, CCx_RXFIFO, data, *data_len);
+	ccx_chip_release(hw);
+
+	// TODO: wait for reception finished
+
+	return RF_RECEIVE_OK;
 }
 
 
@@ -376,8 +390,9 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
     rf->version = &cc1101_version;
 	rf->part_number = &cc1101_part_number;
 	rf->transmit = &cc1101_transmit;
+	rf->receive = &cc1101_receive;
     rf->priv = hw;
-	
+
 	cc1101_reset(hw);
 	cc1101_configure(hw);
 }
