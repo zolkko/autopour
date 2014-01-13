@@ -19,9 +19,7 @@ static bool __impl_gdo2(const ccx_hw_t * self);
 
 static void __impl_chip_release (const ccx_hw_t * self);
 
-static inline void ccx_hw_xmega_init_slave_output(PORT_t * port, uint8_t pin);
-
-static inline void ccx_hw_xmega_init_spi(SPI_t * spi);
+static inline void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf);
 
 #define DECL_HANDLE(X, V) ccx_xmega_hw_t * X = (ccx_xmega_hw_t *) V->priv
 
@@ -60,7 +58,7 @@ void __impl_chip_release (const ccx_hw_t * self)
 bool __impl_ready (const ccx_hw_t * self)
 {
     DECL_HANDLE(handle, self);
-    return (handle->so_port->IN & handle->so_pin) == 0;
+    return (handle->in_so_port->IN & handle->in_so_pin) == 0;
 }
 
 
@@ -78,41 +76,24 @@ bool __impl_gdo2(const ccx_hw_t * self)
 }
 
 
-void ccx_hw_xmega_init_slave_output(PORT_t * port, uint8_t pin)
+void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf)
 {
-    port->DIRCLR = pin;
-    switch (pin) {
-        case PIN0_bm:
-            port->PIN0CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN1_bm:
-            port->PIN1CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN2_bm:
-            port->PIN2CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN3_bm:
-            port->PIN3CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN4_bm:
-            port->PIN4CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN5_bm:
-            port->PIN5CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        case PIN6_bm:
-            port->PIN6CTRL = PORT_OPC_PULLUP_gc;
-            break;
-        default:
-            port->PIN7CTRL = PORT_OPC_PULLUP_gc;
-            break;
-    }
-}
+    // Clock, Slave Select, Slave Input and Output
+    conf->spi_port->DIRSET = conf->sck_pin | conf->si_pin;
+    conf->spi_port->OUTSET = conf->sck_pin;
+    conf->spi_port->OUTCLR = conf->si_pin;
 
+    conf->ss_port->DIRSET = conf->ss_pin;
+    conf->ss_port->OUTSET = conf->ss_pin;
 
-void ccx_hw_xmega_init_spi(SPI_t * spi)
-{
-    spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;
+    conf->spi_port->DIRCLR = conf->so_pin;
+
+    // So pin duplicate
+    conf->in_so_port->DIRCLR = conf->in_so_pin;
+
+    // TODO: pull-up so pin and duplicate (input so pin)
+
+    conf->spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;
 }
 
 
@@ -134,12 +115,11 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
     hw_if->gdo2 = &__impl_gdo2;
     hw_if->chip_release = &__impl_chip_release;
     hw_if->priv = conf;
-    
+
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
     conf->gdo2_port->DIRCLR = conf->gdo2_pin;
 
-    ccx_hw_xmega_init_slave_output(conf->so_port, conf->so_pin);
-    ccx_hw_xmega_init_spi(conf->spi);
+    ccx_hw_xmega_init_spi(conf);
 
     return hw_if;
 }

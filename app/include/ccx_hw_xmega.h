@@ -5,19 +5,24 @@
 
 typedef struct ccx_xmega_hw {
     SPI_t * spi;
-    
+
+    PORT_t * spi_port;
+    uint8_t  sck_pin;
+    uint8_t  si_pin;
+    uint8_t  so_pin;
+
     PORT_t * ss_port;
-    uint8_t ss_pin;
-    
-    PORT_t * so_port;
-    uint8_t so_pin;
-    
+    uint8_t  ss_pin;
+
+    PORT_t * in_so_port;
+    uint8_t  in_so_pin;
+
     PORT_t * gdo0_port;
-    uint8_t gdo0_pin;
-    
+    uint8_t  gdo0_pin;
+
     PORT_t * gdo2_port;
-    uint8_t gdo2_pin;
-    
+    uint8_t  gdo2_pin;
+
     void * priv;
 } ccx_xmega_hw_t;
 

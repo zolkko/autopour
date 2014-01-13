@@ -126,7 +126,7 @@ void cc1101_reset(const ccx_hw_t * hw)
 
     _DELAY_US(50);
 
-    while ( ccx_ready(hw) );
+    while ( ccx_ready(hw) ) ;
 
 	ccx_chip_select(hw);
     while ( ! ccx_ready(hw) );
@@ -319,21 +319,21 @@ void cc1101_wait_transmission_allowed(const ccx_hw_t * self)
  */
 uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self)
 {
-	uint8_t status1 = 0;
-	uint8_t status2 = 0;
+	uint8_t state1 = 0;
+	uint8_t state2 = 0;
 
 	do {
-		cc1101_read(self, CCx_MARCSTATE, &status1);
-		status1 &= CC1101_MARC_bm;
+		cc1101_read(self, CCx_MARCSTATE, &state1);
+		state1 &= CC1101_MARC_bm;
 
-		cc1101_read(self, CCx_MARCSTATE, &status2);
-		status2 &= CC1101_MARC_bm;
+		cc1101_read(self, CCx_MARCSTATE, &state2);
+		state2 &= CC1101_MARC_bm;
 
-		if (status1 != status2) {
+		if (state1 != state2) {
 			continue;
 		}
 
-		switch (status1 & CC1101_MARC_bm) {
+		switch (state1 & CC1101_MARC_bm) {
 			case CC1101_MARC_TXFIFO_UNDERFLOW_gc:
 				cc1101_strobe_flush_tx(self);
 				return RF_TRANSMIT_UNDERFLOW;
