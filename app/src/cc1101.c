@@ -230,7 +230,7 @@ const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 
 void cc1101_configure(const ccx_hw_t * hw)
 {
-	uint8_t * data = pvPortMalloc(sizeof(cc1101_cfg));
+    uint8_t data[sizeof(cc1101_cfg)];
 
 	memcpy_PF(data, cc1101_cfg, sizeof(cc1101_cfg));
 
@@ -240,8 +240,6 @@ void cc1101_configure(const ccx_hw_t * hw)
 	cc1101_burst_write(hw, CCx_REG_BEGIN, data, sizeof(cc1101_cfg));
 
 	ccx_chip_release(hw);
-	
-	vPortFree(data);
 }
 
 
