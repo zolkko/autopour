@@ -25,7 +25,7 @@
 #define CC1101_RW_BIT_bm    0x80
 #define CC1101_BURST_BIT_bm 0x40
 
-
+#define CCx_REG_BEGIN    0x00
 #define CCx_IOCFG2       0x00        // GDO2 output pin configuration
 #define CCx_IOCFG1       0x01        // GDO1 output pin configuration
 #define CCx_IOCFG0D      0x02        // GDO0 output pin configuration

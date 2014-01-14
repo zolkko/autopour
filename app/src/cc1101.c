@@ -14,7 +14,9 @@
 
 
 #ifdef __AVR__
+#include <avr/pgmspace.h>
 #define _DELAY_US(x) _delay_us(x)
+#define CC1101_REG_LOCATION PROGMEM
 #endif
 
 
@@ -155,77 +157,91 @@ void cc1101_reset(const ccx_hw_t * hw)
 	ccx_chip_release(hw);
 }
 
+const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
+	0x09,						// CCx_IOCFG2
+	0x00,						// TODO: IOGDO1
+	GDOx_CFG_RX_THR_RX_EMPTY,	// CCx_IOCFG0D
+
+	0x0e,						// CCx_FIFOTHR
+
+	0x00,						// TODO: CCx_SYNC1
+	0x00,						// TODO: CCX_SYNC0
+
+	CCx_PACKT_LEN,				// CCx_PKTLEN
+
+	0x04,						// CCx_PKTCTRL1
+	0x05,						// CCx_PKTCTRL0
+
+	0x00,						// CCx_ADDR
+	0x00,						// CCx_CHANNR
+
+	0x08,						// CCx_FSCTRL1
+	0x00,						// CCx_FSCTRL0
+
+	0x23,						// CCx_FREQ2
+	0x31,						// CCx_FREQ1
+	0x3B,						// CCx_FREQ0
+
+	0x7B,						// CCx_MDMCFG4
+	0x83,						// CCx_MDMCFG3
+	0x03,						// CCx_MDMCFG2
+	0x22,						// CCx_MDMCFG1
+	0xF8,						// CCx_MDMCFG0
+
+	0x42,						// CCx_DEVIATN
+
+	0x00,						// TODO: CCx_MCSM2
+	0x00,						// TODO: CCx_MCSM1
+
+	0x18,						// CCx_MCSM0
+
+	0x1D,						// CCx_FOCCFG
+	0x1C,						// CCx_BSCFG
+
+	0xC7,						// CCx_AGCCTRL2
+	0x00,						// CCx_AGCCTRL1
+	0xB2,						// CCx_AGCCTRL0
+
+	0x00,						// TODO: CCx_WOREVT1
+	0x00,						// TODO: CCx_WOREVT0
+	0x00,						// TODO: CCx_WORCTRL
+
+	0xB6,						// CCx_FREND1
+	0x10,						// CCx_FREND0
+
+	0xEA,						// CCx_FSCAL3
+	0x2A,						// CCx_FSCAL2
+	0x00,						// CCx_FSCAL1
+	0x1F,						// CCx_FSCAL0
+
+	0x00,						// TODO: CCx_RCCTRL1
+	0x00,						// TODO: CCx_RCCTRL0
+
+	0x59,						// CCx_FSTEST
+
+	0x00,						// TODO: CCx_PTEST
+	0x00,						// TODO: CCx_AGCTEST
+
+	0x81,						// CCx_TEST2
+	0x35,						// CCx_TEST1
+	0x09,						// CCx_TEST0
+};
+
 
 void cc1101_configure(const ccx_hw_t * hw)
 {
+	uint8_t * data = pvPortMalloc(sizeof(cc1101_cfg));
+
+	memcpy_PF(data, cc1101_cfg, sizeof(cc1101_cfg));
+
 	ccx_chip_select(hw);
 	while ( !ccx_ready(hw) ) ;
-
-	cc1101_write(hw, CCx_IOCFG2, 0x09);                      // IOCFG2    GDO2 output pin configuration.0x09-CCA mode, 0x2E-High impedance
-	// TODO: IOGDO1
-	cc1101_write(hw, CCx_IOCFG0D, GDOx_CFG_RX_THR_RX_EMPTY); // IOCFG0D - GDO0 output pin configuration.
-    cc1101_write(hw, CCx_FIFOTHR, 0x0E);                     // FIFOTHR   RXFIFO and TXFIFO thresholds.
-	// TODO: CCx_SYNC1
-	// TODO: CCX_SYNC0
-	cc1101_write(hw, CCx_PKTLEN, CCx_PACKT_LEN);
-
-    cc1101_write(hw, CCx_PKTCTRL1, 0x04); // PKTCTRL1  Packet automation control. bit2 = 1 append RSSI and LQI ,bit2 = 0 not append
-    cc1101_write(hw, CCx_PKTCTRL0, 0x05); // PKTCTRL0  Packet automation control.
-    cc1101_write(hw, CCx_ADDR, 0x00);     // ADDR      Device address.
-    cc1101_write(hw, CCx_CHANNR, 0x00);   // CHANNR    Channel number.
-
-
-    cc1101_write(hw, CCx_FSCTRL1, 0x08);  // FSCTRL1   Frequency synthesizer control.
-    cc1101_write(hw, CCx_FSCTRL0, 0x00);  // FSCTRL0   Frequency synthesizer control.
-    
-    cc1101_write(hw, CCx_FREQ2, 0x23);    // FREQ2     Frequency control word, high unsigned char.
-    cc1101_write(hw, CCx_FREQ1, 0x31);    // FREQ1     Frequency control word, middle unsigned char.
-    cc1101_write(hw, CCx_FREQ0, 0x3B);    // FREQ0     Frequency control word, low unsigned char.
-    
-    cc1101_write(hw, CCx_MDMCFG4, 0x7B);  // MDMCFG4   Modem configuration.
-    cc1101_write(hw, CCx_MDMCFG3, 0x83);  // MDMCFG3   Modem configuration.
-    cc1101_write(hw, CCx_MDMCFG2, 0x03);  // MDMCFG2   Modem configuration.
-    cc1101_write(hw, CCx_MDMCFG1, 0x22);  // MDMCFG1   Modem configuration.
-    cc1101_write(hw, CCx_MDMCFG0, 0xF8);  // MDMCFG0   Modem configuration.
 	
-    cc1101_write(hw, CCx_DEVIATN, 0x42);  // DEVIATN   Modem deviation setting (when FSK modulation is enabled).
-	
-	// TODO: CCx_MCSM2
-	// TODO: CCx_MCSM1
-	cc1101_write(hw, CCx_MCSM0, 0x18);    // MCSM0     Main Radio Control State Machine configuration.
-
-	cc1101_write(hw, CCx_FOCCFG, 0x1D);   // FOCCFG    Frequency Offset Compensation Configuration.
-    cc1101_write(hw, CCx_BSCFG, 0x1C);    // BSCFG     Bit synchronization Configuration.
-
-    cc1101_write(hw, CCx_AGCCTRL2, 0xC7); // AGCCTRL2  AGC control.
-    cc1101_write(hw, CCx_AGCCTRL1, 0x00); // AGCCTRL1  AGC control.
-    cc1101_write(hw, CCx_AGCCTRL0, 0xB2); // AGCCTRL0  AGC control.
-
-	// TODO: CCx_WOREVT1
-	// TODO: CCx_WOREVT0
-	// TODO: CCx_WORCTRL
-	
-    cc1101_write(hw, CCx_FREND1, 0xB6);   // FREND1    Front end RX configuration.
-    cc1101_write(hw, CCx_FREND0, 0x10);   // FREND0    Front end TX configuration.
-
-    cc1101_write(hw, CCx_FSCAL3, 0xEA);   // FSCAL3    Frequency synthesizer calibration.
-    cc1101_write(hw, CCx_FSCAL2, 0x2A);   // FSCAL2    Frequency synthesizer calibration.
-    cc1101_write(hw, CCx_FSCAL1, 0x00);   // FSCAL1    Frequency synthesizer calibration.
-    cc1101_write(hw, CCx_FSCAL0, 0x1F);   // FSCAL0    Frequency synthesizer calibration.
-	
-	// TODO: CCx_RCCTRL1
-	// TODO: CCx_RCCTRL0
-	
-    cc1101_write(hw, CCx_FSTEST, 0x59);   // FSTEST    Frequency synthesizer calibration.
-	
-	// TODO: CCx_PTEST
-	// TODO: CCx_AGCTEST
-    
-    cc1101_write(hw, CCx_TEST2, 0x81);    // TEST2     Various test settings.
-    cc1101_write(hw, CCx_TEST1, 0x35);    // TEST1     Various test settings.
-    cc1101_write(hw, CCx_TEST0, 0x09);    // TEST0     Various test settings.
+	cc1101_burst_write(hw, CCx_REG_BEGIN, data, sizeof(cc1101_cfg));
 
 	ccx_chip_release(hw);
+	
+	vPortFree(data);
 }
 
 
