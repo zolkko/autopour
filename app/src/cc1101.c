@@ -9,10 +9,20 @@
 #include "rf.h"
 #include "cc1101.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 
 #ifdef __AVR__
 #define _DELAY_US(x) _delay_us(x)
 #endif
+
+
+typedef struct __rf_private_t {
+	ccx_hw_t * hw;
+	xSemaphoreHandle lock;
+} rf_private_t;
+
 
 static uint8_t cc1101_version(const rf_t * self);
 
@@ -52,7 +62,15 @@ static inline uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self);
 
 static int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dst_addr);
 
-#define DECL_HW(X, V) ccx_hw_t * X = (ccx_hw_t *) V->priv
+static void cc1101_free(const rf_t * self);
+
+#define DECL_HW(X, V) ccx_hw_t * X = ((rf_private_t *) V->priv)->hw
+
+#define DECL_LOCK(X, V) xSemaphoreHandle X = ((rf_private_t *) V->priv)->lock
+
+#define acquire_lock(X) xSemaphoreTake(X, portMAX_DELAY)
+
+#define release_lock(X) xSemaphoreGive(X)
 
 
 uint8_t cc1101_strobe(const ccx_hw_t * self, uint8_t addr)
@@ -142,7 +160,7 @@ void cc1101_configure(const ccx_hw_t * hw)
 {
 	ccx_chip_select(hw);
 	while ( !ccx_ready(hw) ) ;
-	
+
 	cc1101_write(hw, CCx_IOCFG2, 0x09);                      // IOCFG2    GDO2 output pin configuration.0x09-CCA mode, 0x2E-High impedance
 	// TODO: IOGDO1
 	cc1101_write(hw, CCx_IOCFG0D, GDOx_CFG_RX_THR_RX_EMPTY); // IOCFG0D - GDO0 output pin configuration.
@@ -150,12 +168,12 @@ void cc1101_configure(const ccx_hw_t * hw)
 	// TODO: CCx_SYNC1
 	// TODO: CCX_SYNC0
 	cc1101_write(hw, CCx_PKTLEN, CCx_PACKT_LEN);
-	
+
     cc1101_write(hw, CCx_PKTCTRL1, 0x04); // PKTCTRL1  Packet automation control. bit2 = 1 append RSSI and LQI ,bit2 = 0 not append
     cc1101_write(hw, CCx_PKTCTRL0, 0x05); // PKTCTRL0  Packet automation control.
     cc1101_write(hw, CCx_ADDR, 0x00);     // ADDR      Device address.
     cc1101_write(hw, CCx_CHANNR, 0x00);   // CHANNR    Channel number.
-	
+
 
     cc1101_write(hw, CCx_FSCTRL1, 0x08);  // FSCTRL1   Frequency synthesizer control.
     cc1101_write(hw, CCx_FSCTRL0, 0x00);  // FSCTRL0   Frequency synthesizer control.
@@ -214,6 +232,9 @@ void cc1101_configure(const ccx_hw_t * hw)
 uint8_t cc1101_version(const rf_t * self)
 {
     DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+
+	while ( !acquire_lock(lock) ) ;
 
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
@@ -222,6 +243,8 @@ uint8_t cc1101_version(const rf_t * self)
 	cc1101_read(hw, CCx_VERSION, &version);
 
 	ccx_chip_release(hw);
+	
+	release_lock(lock);
 
 	return version;
 }
@@ -230,6 +253,9 @@ uint8_t cc1101_version(const rf_t * self)
 uint8_t cc1101_part_number(const rf_t * self)
 {
 	DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+	
+	while ( !acquire_lock(lock) ) ;
 
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
@@ -238,6 +264,8 @@ uint8_t cc1101_part_number(const rf_t * self)
 	cc1101_read(hw, CCx_PARTNUM, &part_number);
 
 	ccx_chip_release(hw);
+
+	release_lock(lock);
 
 	return part_number;
 }
@@ -263,6 +291,11 @@ uint8_t cc1101_rssi_decode(uint8_t rssi_enc)
 int8_t cc1101_transmit(const rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr)
 {
 	DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+
+	if ( !acquire_lock(lock) ) {
+		return RF_TRANSMIT_TIMEOUT;
+	}
 
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
@@ -283,6 +316,8 @@ int8_t cc1101_transmit(const rf_t * self, const uint8_t * data, uint8_t data_siz
 	uint8_t result = cc1101_wait_transmission_finished(hw);
 
 	ccx_chip_release(hw);
+	
+	release_lock(lock);
 
 	return result;
 }
@@ -361,7 +396,11 @@ uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self)
 int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dst_addr)
 {
 	DECL_HW(hw, self);
-	uint8_t stat;
+	DECL_LOCK(lock, self);
+	
+	if ( !acquire_lock(lock) ) {
+		return RF_RECEIVE_TIMEOUT;
+	}
 
 	ccx_chip_select(hw);
 	ccx_wait_ready(hw);
@@ -381,6 +420,8 @@ int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uin
 
 	// TODO: wait for reception finished
 
+	release_lock(lock);
+
 	return RF_RECEIVE_OK;
 }
 
@@ -392,8 +433,21 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 	rf->transmit = &cc1101_transmit;
 	rf->receive = &cc1101_receive;
 	rf->can_receive = NULL;
-    rf->priv = hw;
+	
+	rf_private_t * priv = (rf_private_t *) pvPortMalloc(sizeof(rf_private_t));
+	priv->hw = hw;
+	priv->lock = xSemaphoreCreateMutex();
+	
+    rf->priv = priv;
 
 	cc1101_reset(hw);
 	cc1101_configure(hw);
+}
+
+
+void cc1101_free(const rf_t * self)
+{
+	DECL_LOCK(lock, self);
+	vSemaphoreDelete(lock);
+	vPortFree(self->priv);
 }

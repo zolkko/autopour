@@ -20,10 +20,12 @@ typedef struct __rf_t {
 #define RF_TRANSMIT_OK              1
 #define RF_TRANSMIT_FAIL            0
 #define RF_TRANSMIT_UNDERFLOW      -1
+#define RF_TRANSMIT_TIMEOUT        -2
 #define rf_transmit(X, D, S, T, F)  X->transmit(X, D, S, T, F)
 
 #define RF_RECEIVE_OK               1
 #define RF_RECEIVE_FAIL             0
+#define RF_RECEIVE_TIMEOUT         -1
 #define rf_receive(X, D, S, T, F)   X->receive(X, D, S, T, F)
 
 #define RF_MAX_TIMEOUT 0xffff
