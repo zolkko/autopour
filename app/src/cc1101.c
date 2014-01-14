@@ -20,7 +20,7 @@
 #endif
 
 
-typedef struct __rf_private_t {
+typedef struct {
 	ccx_hw_t * hw;
 	xSemaphoreHandle lock;
 } rf_private_t;
@@ -159,13 +159,13 @@ void cc1101_reset(const ccx_hw_t * hw)
 
 const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 	0x09,						// CCx_IOCFG2
-	0x00,						// TODO: IOGDO1
+	0x2e,						// CCx_IOGDO1 - default 3-state
 	GDOx_CFG_RX_THR_RX_EMPTY,	// CCx_IOCFG0D
 
 	0x0e,						// CCx_FIFOTHR
 
-	0x00,						// TODO: CCx_SYNC1
-	0x00,						// TODO: CCX_SYNC0
+	0xd3,						// CCx_SYNC1 - 8 MSB 16-bit sync word
+	0x91,						// CCX_SYNC0 - 8 LSB 16-bit sync word
 
 	CCx_PACKT_LEN,				// CCx_PKTLEN
 
@@ -190,8 +190,8 @@ const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 
 	0x42,						// CCx_DEVIATN
 
-	0x00,						// TODO: CCx_MCSM2
-	0x00,						// TODO: CCx_MCSM1
+	0x07,						// CCx_MCSM2  - 0x07 timeout for sync word search (until end of packet)
+	0x30,						// CCx_MCSM1  - 0x30
 
 	0x18,						// CCx_MCSM0
 
@@ -202,9 +202,9 @@ const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 	0x00,						// CCx_AGCCTRL1
 	0xB2,						// CCx_AGCCTRL0
 
-	0x00,						// TODO: CCx_WOREVT1
-	0x00,						// TODO: CCx_WOREVT0
-	0x00,						// TODO: CCx_WORCTRL
+	0x87,						// CCx_WOREVT1 - 0x87
+	0x6b,						// CCx_WOREVT0 - 0x6b
+	0xf8,						// CCx_WORCTRL - 0xf8 
 
 	0xB6,						// CCx_FREND1
 	0x10,						// CCx_FREND0
@@ -214,13 +214,13 @@ const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 	0x00,						// CCx_FSCAL1
 	0x1F,						// CCx_FSCAL0
 
-	0x00,						// TODO: CCx_RCCTRL1
-	0x00,						// TODO: CCx_RCCTRL0
+	0x41,						// CCx_RCCTRL1 - 0x41
+	0x00,						// CCx_RCCTRL0 - 0x00
 
 	0x59,						// CCx_FSTEST
 
-	0x00,						// TODO: CCx_PTEST
-	0x00,						// TODO: CCx_AGCTEST
+	0x7f,						// CCx_PTEST   - 0x7f
+	0x3f,						// CCx_AGCTEST - 0x3f
 
 	0x81,						// CCx_TEST2
 	0x35,						// CCx_TEST1
