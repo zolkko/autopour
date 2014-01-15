@@ -123,6 +123,10 @@
 
 #define GDOx_CFG_RX_THR_RX_THR   0x00
 #define GDOx_CFG_RX_THR_RX_EMPTY 0x01
+
+#define GDOx_CFG_PKT_RECEIVED_gc     0x07
+#define GDOx_CFG_PREAMBLE_QUALITY_gc 0x08
+#define GDOx_CFG_CCA_gc              0x09
 // ...
 #define GDOx_CFG_CHIP_RDYn       0x29
 #define GDOx_CFG_XOSC_STABLE     0x2b

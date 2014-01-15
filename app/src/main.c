@@ -40,7 +40,15 @@ void app_task(void * params)
             printf((const char *)buff);
 			rf_transmit(rf, buff, written, 0, 0);
         }
-        vTaskDelay(1000);
+
+        if (rf_can_receive(rf, 1000) == RF_RECEIVE_OK)
+        {
+            int a;
+            a = 12;
+            if (a = 12) {
+                a = 13;
+            }
+        }
         counter++;
     }
 
@@ -55,7 +63,7 @@ extern ccx_xmega_hw_t ccx_hw_default;
 
 int main(void)
 {
-	sei();
+	taskDISABLE_INTERRUPTS();
 
     sys_init();
     usart_init();
@@ -67,7 +75,7 @@ int main(void)
         goto reset_controller;
     }
 
-	cli();
+    taskENABLE_INTERRUPTS();
 
     vTaskStartScheduler();
 

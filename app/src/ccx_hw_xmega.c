@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include "ccx_hw.h"
 #include "ccx_hw_xmega.h"
 #include "FreeRTOS.h"
@@ -20,6 +21,8 @@ static bool __impl_gdo2(const ccx_hw_t * self);
 static void __impl_chip_release (const ccx_hw_t * self);
 
 static inline void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf);
+
+static inline volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin);
 
 #define DECL_HANDLE(X, V) ccx_xmega_hw_t * X = (ccx_xmega_hw_t *) V->priv
 
@@ -105,6 +108,53 @@ void __impl_wait_ready(const ccx_hw_t * hw)
 }
 
 
+/**
+ * GDO0 interrupt vector
+ */
+ISR(PORTA_INT0_vect)
+{
+}
+
+
+/**
+ * GDO2 interrupt vector
+ */
+ISR(PORTA_INT1_vect)
+{
+}
+
+
+volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin)
+{
+    switch (pin)
+    {
+        case PIN0_bm:
+            return &(port->PIN0CTRL);
+
+        case PIN1_bm:
+            return &(port->PIN1CTRL);
+
+        case PIN2_bm:
+            return &(port->PIN2CTRL);
+            
+        case PIN3_bm:
+            return &(port->PIN3CTRL);
+        
+        case PIN4_bm:
+            return &(port->PIN4CTRL);
+            
+        case PIN5_bm:
+            return &(port->PIN5CTRL);
+            
+        case PIN6_bm:
+            return &(port->PIN6CTRL);
+            
+        default:
+            return &(port->PIN7CTRL);
+    }
+}
+
+
 ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 {
     hw_if->chip_select = &__impl_chip_select;
@@ -117,7 +167,18 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
     hw_if->priv = conf;
 
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
+    volatile uint8_t * gdo0_pinctrl = port_pin_control(conf->gdo0_port, conf->gdo0_pin);
+    *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_RISING_gc;
+    conf->gdo0_port->INT0MASK = conf->gdo0_pin;
+    conf->gdo0_port->INTCTRL |= PORT_INT0LVL_MED_gc;
+
     conf->gdo2_port->DIRCLR = conf->gdo2_pin;
+    volatile uint8_t * gdo2_pinctrl = port_pin_control(conf->gdo2_port, conf->gdo2_pin);
+    *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_RISING_gc;
+    conf->gdo2_port->INT1MASK = conf->gdo2_pin;
+    conf->gdo2_port->INTCTRL |= PORT_INT1LVL_MED_gc;
+
+    PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 
     ccx_hw_xmega_init_spi(conf);
 

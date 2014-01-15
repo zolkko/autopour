@@ -7,7 +7,7 @@ typedef struct __rf_t {
 	uint8_t (*part_number) (const struct __rf_t * self);
 	int8_t  (*transmit)    (const struct __rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
 	int8_t  (*receive)     (const struct __rf_t * self, uint8_t * data, uint8_t * data_size, uint8_t * src_addr, uint8_t * dst_addr);
-	void    (*can_receive) (const struct __rf_t * self, uint16_t timeout);
+	uint8_t (*can_receive) (const struct __rf_t * self, portTickType ticks);
 
     void * priv;
 } rf_t;

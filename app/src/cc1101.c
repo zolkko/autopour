@@ -5,12 +5,15 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
+
 #include "ccx_hw.h"
 #include "rf.h"
 #include "cc1101.h"
-
-#include "FreeRTOS.h"
-#include "semphr.h"
 
 
 #ifdef __AVR__
@@ -56,6 +59,10 @@ static uint8_t cc1101_strobe(const ccx_hw_t * self, uint8_t addr);
 
 #define cc1101_strobe_calibrate(X) cc1101_strobe(X, CCx_SCAL)
 
+#define cc1101_strobe_receive(X)   cc1101_strobe(X, CCx_SRX)
+
+#define cc1101_strobe_idle(X)      cc1101_strobe(X, CCx_SIDLE)
+
 #define cc1101_strobe_nop(X)       cc1101_strobe(X, CCx_SNOP)
 
 static inline void cc1101_wait_transmission_allowed(const ccx_hw_t * self);
@@ -63,6 +70,8 @@ static inline void cc1101_wait_transmission_allowed(const ccx_hw_t * self);
 static inline uint8_t cc1101_wait_transmission_finished(const ccx_hw_t * self);
 
 static int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uint8_t * src_addr, uint8_t * dst_addr);
+
+static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 
 static void cc1101_free(const rf_t * self);
 
@@ -158,8 +167,8 @@ void cc1101_reset(const ccx_hw_t * hw)
 }
 
 const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
-	0x09,						// CCx_IOCFG2
-	0x2e,						// CCx_IOGDO1 - default 3-state
+	GDOx_CFG_CCA_gc,			// CCx_IOCFG2
+	GDOx_CFG_HI_Z,				// CCx_IOGDO1 - default 3-state
 	GDOx_CFG_RX_THR_RX_EMPTY,	// CCx_IOCFG0D
 
 	0x0e,						// CCx_FIFOTHR
@@ -440,13 +449,65 @@ int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uin
 }
 
 
+uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks)
+{
+    DECL_HW(hw, self);
+    DECL_LOCK(lock, self);
+    
+    if (!acquire_lock(lock)) {
+        return 0;
+    }
+    
+    ccx_chip_select(hw);
+    ccx_wait_ready(hw);
+
+    // TODO: test RX buffer before sleep because it already may has some data
+    // TODO: calibrate
+
+    cc1101_strobe_receive(hw);
+    
+    vTaskDelay(ticks);
+
+    uint8_t in_bytes1 = 0;
+    uint8_t in_bytes2 = 0;
+
+    do {
+        cc1101_read(hw, CCx_RXBYTES, &in_bytes1);
+		cc1101_read(hw, CCx_RXBYTES, &in_bytes2);
+
+        if (in_bytes1 == in_bytes2)
+        {
+            break;
+        }
+    } while (true) ;
+    
+    cc1101_strobe_idle(hw);
+    
+    uint8_t state1 = 0;
+    uint8_t state2 = 0;
+    do {
+        cc1101_read(hw, CCx_MARCSTATE, &state1);
+        state1 &= CC1101_MARC_bm;
+        
+        cc1101_read(hw, CCx_MARCSTATE, &state2);
+        state2 &= CC1101_MARC_bm;
+    } while (state1 != state2 || state1 != CC1101_MARC_IDLE_gc);
+    
+    ccx_chip_release(hw);
+
+    release_lock(lock);
+
+    return in_bytes1;
+}
+
+
 void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 {
     rf->version = &cc1101_version;
 	rf->part_number = &cc1101_part_number;
 	rf->transmit = &cc1101_transmit;
 	rf->receive = &cc1101_receive;
-	rf->can_receive = NULL;
+	rf->can_receive = &cc1101_can_receive;
 	
 	rf_private_t * priv = (rf_private_t *) pvPortMalloc(sizeof(rf_private_t));
 	priv->hw = hw;
