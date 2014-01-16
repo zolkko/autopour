@@ -2,6 +2,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <avr/io.h>
+
+#include <FreeRTOS.h>
+
 #include "ccx_hw.h"
 #include "ccx_hw_xmega.h"
 

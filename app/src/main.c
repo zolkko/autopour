@@ -43,11 +43,7 @@ void app_task(void * params)
 
         if (rf_can_receive(rf, 1000) == RF_RECEIVE_OK)
         {
-            int a;
-            a = 12;
-            if (a = 12) {
-                a = 13;
-            }
+            // TODO: process incoming data
         }
         counter++;
     }

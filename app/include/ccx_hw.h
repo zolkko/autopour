@@ -9,7 +9,11 @@ typedef struct ccx_hw {
     bool (*ready)        (const struct ccx_hw * self);
 	void (*wait_ready)   (const struct ccx_hw * self);
     bool (*gdo0)         (const struct ccx_hw * self);
+	bool (*wait_gdo0)    (const struct ccx_hw * self, portTickType timeout);
+	bool (*gdo1)         (const struct ccx_hw * self);
+	bool (*wait_gdo1)    (const struct ccx_hw * self, portTickType timeout);
     bool (*gdo2)         (const struct ccx_hw * self);
+	bool (*wait_gdo2)    (const struct ccx_hw * self, portTickType timeout);
     void (*chip_release) (const struct ccx_hw * self);
     void * priv;
 } ccx_hw_t;
@@ -25,7 +29,15 @@ typedef struct ccx_hw {
 
 #define ccx_gdo0(X)         X->gdo0(X)
 
+#define ccx_wait_gdo0(X, T) X->wait_gdo0(X, T`)
+
+#define ccx_gdo1(X)         X->gdo1(X)
+
+#define ccx_wait_gdo1(X, T) X->wait_gdo1(X, T)
+
 #define ccx_gdo2(X)         X->gdo2(X)
+
+#define ccx_wait_gdo2(X, T) X->wait_gdo2(X, T)
 
 #define ccx_chip_release(X) X->chip_release(X)
 
