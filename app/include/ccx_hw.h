@@ -29,7 +29,7 @@ typedef struct ccx_hw {
 
 #define ccx_gdo0(X)         X->gdo0(X)
 
-#define ccx_wait_gdo0(X, T) X->wait_gdo0(X, T`)
+#define ccx_wait_gdo0(X, T) X->wait_gdo0(X, T)
 
 #define ccx_gdo1(X)         X->gdo1(X)
 

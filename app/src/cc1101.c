@@ -448,15 +448,15 @@ int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_len, uin
 }
 
 
-uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks)
+uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 {
     DECL_HW(hw, self);
     DECL_LOCK(lock, self);
-    
+
     if (!acquire_lock(lock)) {
         return 0;
     }
-    
+
     ccx_chip_select(hw);
     ccx_wait_ready(hw);
 
@@ -464,39 +464,43 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks)
     // TODO: calibrate
 
     cc1101_strobe_receive(hw);
+
+	if (ccx_wait_gdo0(hw, timeout) && ccx_gdo0(hw))
+    {
+		uint8_t in_bytes1 = 0;
+		uint8_t in_bytes2 = 0;
+
+		do {
+			cc1101_read(hw, CCx_RXBYTES, &in_bytes1);
+			cc1101_read(hw, CCx_RXBYTES, &in_bytes2);
+
+			if (in_bytes1 == in_bytes2) {
+				break;
+			}
+		} while (true) ;
+
+		cc1101_strobe_idle(hw);
+
+		uint8_t state1 = 0;
+		uint8_t state2 = 0;
+		do {
+			cc1101_read(hw, CCx_MARCSTATE, &state1);
+			state1 &= CC1101_MARC_bm;
+
+			cc1101_read(hw, CCx_MARCSTATE, &state2);
+			state2 &= CC1101_MARC_bm;
+		} while (state1 != state2 || state1 != CC1101_MARC_IDLE_gc);
     
-    vTaskDelay(ticks);
+		ccx_chip_release(hw);
+		release_lock(lock);
 
-    uint8_t in_bytes1 = 0;
-    uint8_t in_bytes2 = 0;
+		return in_bytes1;
+	} else {
+		ccx_chip_release(hw);
+		release_lock(lock);
 
-    do {
-        cc1101_read(hw, CCx_RXBYTES, &in_bytes1);
-		cc1101_read(hw, CCx_RXBYTES, &in_bytes2);
-
-        if (in_bytes1 == in_bytes2)
-        {
-            break;
-        }
-    } while (true) ;
-    
-    cc1101_strobe_idle(hw);
-    
-    uint8_t state1 = 0;
-    uint8_t state2 = 0;
-    do {
-        cc1101_read(hw, CCx_MARCSTATE, &state1);
-        state1 &= CC1101_MARC_bm;
-        
-        cc1101_read(hw, CCx_MARCSTATE, &state2);
-        state2 &= CC1101_MARC_bm;
-    } while (state1 != state2 || state1 != CC1101_MARC_IDLE_gc);
-    
-    ccx_chip_release(hw);
-
-    release_lock(lock);
-
-    return in_bytes1;
+		return 0;
+	}
 }
 
 

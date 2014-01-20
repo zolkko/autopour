@@ -228,11 +228,14 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
     hw_if->gdo0 = &ccx_xmega_gdo0;
 	hw_if->gdo1 = &ccx_xmega_gdo1;
     hw_if->gdo2 = &ccx_xmega_gdo2;
+	hw_if->wait_gdo0 = &ccx_xmega_wait_gdo0;
+	hw_if->wait_gdo1 = &ccx_xmega_wait_gdo1;
+	hw_if->wait_gdo2 = &ccx_xmega_wait_gdo2;
     hw_if->chip_release = &ccx_xmega_chip_release;
-	
+
 	ccx_hw_xmega_priv_t * priv = pvPortMalloc(sizeof(ccx_hw_xmega_priv_t));
 	priv->conf = conf;
-	
+
     hw_if->priv = priv;
 
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
