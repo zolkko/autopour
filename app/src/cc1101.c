@@ -511,13 +511,17 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 	rf->transmit = &cc1101_transmit;
 	rf->receive = &cc1101_receive;
 	rf->can_receive = &cc1101_can_receive;
-	
+
 	rf_private_t * priv = (rf_private_t *) pvPortMalloc(sizeof(rf_private_t));
 	priv->hw = hw;
 	priv->lock = xSemaphoreCreateMutex();
-	
+
     rf->priv = priv;
 
 	cc1101_reset(hw);
 	cc1101_configure(hw);
+
+    if (NULL != hw->init_cleanup) {
+        ccx_init_cleanup(hw);
+    }
 }

@@ -33,6 +33,8 @@ static bool ccx_xmega_wait_gdo2(const ccx_hw_t * self, portTickType timeout);
 
 static void ccx_xmega_chip_release(const ccx_hw_t * self);
 
+static void ccx_xmega_init_cleanup(const ccx_hw_t * self);
+
 static inline void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf);
 
 static inline volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin);
@@ -58,7 +60,7 @@ static xSemaphoreHandle gdo2_semaphore = NULL;
 ISR(PORTA_INT0_vect)
 {
 	if (gdo0_semaphore != NULL) {
-		xSemaphoreGiveFromISR(gdo0_semaphore, NULL);
+        xSemaphoreGiveFromISR(gdo0_semaphore, NULL);
 	}
 }
 
@@ -211,6 +213,14 @@ volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin)
 }
 
 
+void ccx_xmega_init_cleanup(const ccx_hw_t * self)
+{
+    DECL_HANDLE(handle, self);
+    handle->gdo0_port->INTFLAGS = handle->gdo0_port->INTFLAGS & ~(PORT_INT0IF_bm);
+    handle->gdo2_port->INTFLAGS = handle->gdo2_port->INTFLAGS & ~(PORT_INT1IF_bm);
+}
+
+
 ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 {
 	if (gdo0_semaphore == NULL) {
@@ -232,6 +242,7 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 	hw_if->wait_gdo1 = &ccx_xmega_wait_gdo1;
 	hw_if->wait_gdo2 = &ccx_xmega_wait_gdo2;
     hw_if->chip_release = &ccx_xmega_chip_release;
+    hw_if->init_cleanup = &ccx_xmega_init_cleanup;
 
 	ccx_hw_xmega_priv_t * priv = pvPortMalloc(sizeof(ccx_hw_xmega_priv_t));
 	priv->conf = conf;
