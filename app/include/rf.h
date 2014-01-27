@@ -3,14 +3,37 @@
 #define RF_H_
 
 typedef struct __rf_t {    
-    uint8_t (*version)     (const struct __rf_t * self);
-	uint8_t (*part_number) (const struct __rf_t * self);
-	int8_t  (*transmit)    (const struct __rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
-	int8_t  (*receive)     (const struct __rf_t * self, uint8_t * data, uint8_t * data_size, uint8_t * src_addr, uint8_t * dst_addr);
-	uint8_t (*can_receive) (const struct __rf_t * self, portTickType ticks);
+    uint8_t (*version)          (const struct __rf_t * self);
+	uint8_t (*part_number)      (const struct __rf_t * self);
+	int8_t  (*transmit)         (const struct __rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
+	int8_t  (*receive)          (const struct __rf_t * self, uint8_t * data, uint8_t * data_size, uint8_t * src_addr, uint8_t * dst_addr);
+	uint8_t (*can_receive)      (const struct __rf_t * self, portTickType ticks);
+
+	/** write a packet into transceiver buffer */
+    int8_t  (*prepare)          (const struct __rf_t * self, const void * payload, uint16_t payload_len);
+	int8_t  (*transmit2)        (const struct __rf_t * self);
+	int8_t  (*send)             (const struct __rf_t * self, const void * payload, uint16_t payload_len);
+	
+	int8_t  (*read)             (const struct __rf_t * self, void * buffer, uint16_t buffer_len);
+	uint8_t (*channel_clear)    (const struct __rf_t * self);
+	
+	uint8_t (*receiving_packet) (const struct __rf_t * self);
+	uint8_t (*pending_packet)   (const struct __rf_t * self);
+	
+	uint8_t (*rx_on)            (const struct __rf_t * self);
+	uint8_t (*rx_off)           (const struct __rf_t * self);
+	
+	uint8_t (*sleep)            (const struct __rf_t * self);
 
     void * priv;
 } rf_t;
+
+
+#define RF_TX_OK         1
+#define RF_TX_ERR        0
+#define RF_TX_COLLISION -1
+#define RF_TX_NOACK     -2
+#define RF_TX_TIMEOUT   -3
 
 
 #define rf_version(X)               X->version(X)
@@ -30,6 +53,12 @@ typedef struct __rf_t {
 
 #define RF_MAX_TIMEOUT 0xffff
 #define rf_can_receive(X, T)        X->can_receive(X, T)
+
+
+#define rf_prepare(X, P, L)         X->prepare(X, P, L)
+#define rf_senf(X, B, L)            X->send(X, B, L)
+#define rf_read(X, B, L)            X->read(X, B, L)
+#define rf_sleep(X)                 X->sleep(X)
 
 
 #endif /* RF_H_ */

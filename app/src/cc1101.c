@@ -504,6 +504,45 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 }
 
 
+void cc1101_prepare(const rf_t * rf, const void * payload, uint16_t payload_len)
+{
+	// TODO: flush TX buffer
+	DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+
+	if (!acquire_lock(lock)) {
+		return RF_TX_ERR;
+	}
+
+	cc1101_chip_select(hw);
+	cc1101_strobe_flush_tx(hw);
+
+	// TODO: support situation if a packet for transmission is bigger then TX packet buffer
+	cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload);
+
+	cc1101_chip_release(hw);
+	release_lock(lock);
+}
+
+/**
+ * This module knows nothing about a packet structure
+ */
+void cc1101_transmit2(const rf_t * rf)
+{
+}
+
+
+int8_t cc1101_send(const rf_t * rf, const void * payload, uint16_t payload_len)
+{
+	int8_t result = cc1101_prepare(rf, payload, payload_len);
+	if (RF_TX_OK != result) {
+		return result;
+	}
+
+	cc1101_transmit(rf);
+}
+
+
 void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 {
     rf->version = &cc1101_version;
