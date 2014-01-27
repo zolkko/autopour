@@ -15,6 +15,7 @@ typedef struct ccx_hw {
     bool (*gdo2)         (const struct ccx_hw * self);
 	bool (*wait_gdo2)    (const struct ccx_hw * self, portTickType timeout);
     void (*chip_release) (const struct ccx_hw * self);
+    void (*init_cleanup) (const struct ccx_hw * self);
     void * priv;
 } ccx_hw_t;
 
@@ -40,6 +41,8 @@ typedef struct ccx_hw {
 #define ccx_wait_gdo2(X, T) X->wait_gdo2(X, T)
 
 #define ccx_chip_release(X) X->chip_release(X)
+
+#define ccx_init_cleanup(X) X->init_cleanup(X)
 
 
 #endif /* CCX_HW_H_ */
