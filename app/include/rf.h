@@ -2,27 +2,26 @@
 #ifndef RF_H_
 #define RF_H_
 
-typedef struct __rf_t {    
+typedef struct __rf_t {
     uint8_t (*version)          (const struct __rf_t * self);
 	uint8_t (*part_number)      (const struct __rf_t * self);
-	int8_t  (*transmit)         (const struct __rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
 	int8_t  (*receive)          (const struct __rf_t * self, uint8_t * data, uint8_t * data_size, uint8_t * src_addr, uint8_t * dst_addr);
 	uint8_t (*can_receive)      (const struct __rf_t * self, portTickType ticks);
 
 	/** write a packet into transceiver buffer */
     int8_t  (*prepare)          (const struct __rf_t * self, const void * payload, uint16_t payload_len);
-	int8_t  (*transmit2)        (const struct __rf_t * self);
+	int8_t  (*transmit)         (const struct __rf_t * self);
 	int8_t  (*send)             (const struct __rf_t * self, const void * payload, uint16_t payload_len);
-	
+
 	int8_t  (*read)             (const struct __rf_t * self, void * buffer, uint16_t buffer_len);
 	uint8_t (*channel_clear)    (const struct __rf_t * self);
-	
+
 	uint8_t (*receiving_packet) (const struct __rf_t * self);
 	uint8_t (*pending_packet)   (const struct __rf_t * self);
-	
+
 	uint8_t (*rx_on)            (const struct __rf_t * self);
 	uint8_t (*rx_off)           (const struct __rf_t * self);
-	
+
 	uint8_t (*sleep)            (const struct __rf_t * self);
 
     void * priv;

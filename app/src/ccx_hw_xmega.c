@@ -15,31 +15,51 @@
 
 static void ccx_xmega_chip_select(const ccx_hw_t * self);
 
+static void ccx_xmega_chip_release(const ccx_hw_t * self);
+
+
 static uint8_t ccx_xmega_write(const ccx_hw_t * self, uint8_t data);
 
 static bool ccx_xmega_ready(const ccx_hw_t * self);
 
+
 static bool ccx_xmega_gdo0(const ccx_hw_t * self);
+
+static void ccx_xmega_enable_gdo0(const ccx_hw_t * self);
+
+static void ccx_xmega_disable_gdo0(const ccx_hw_t * self);
 
 static bool ccx_xmega_wait_gdo0(const ccx_hw_t * self, portTickType timeout);
 
+
 static bool ccx_xmega_gdo1(const ccx_hw_t * self);
+
+static void ccx_xmega_enable_gdo1(const ccx_hw_t * self);
+
+static void ccx_xmega_disable_gdo1(const ccx_hw_t * self);
 
 static bool ccx_xmega_wait_gdo1(const ccx_hw_t * self, portTickType timeout);
 
+
 static bool ccx_xmega_gdo2(const ccx_hw_t * self);
+
+static void ccx_xmega_enable_gdo2(const ccx_hw_t * self);
+
+static void ccx_xmega_disable_gdo2(const ccx_hw_t * self);
 
 static bool ccx_xmega_wait_gdo2(const ccx_hw_t * self, portTickType timeout);
 
-static void ccx_xmega_chip_release(const ccx_hw_t * self);
-
-static void ccx_xmega_init_cleanup(const ccx_hw_t * self);
 
 static inline void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf);
 
 static inline volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin);
 
-#define DECL_HANDLE(X, V) ccx_xmega_hw_t * X = ((ccx_hw_xmega_priv_t *) V->priv)->conf
+
+#define DECL_HANDLE(X, V)   ccx_xmega_hw_t * X = ((ccx_hw_xmega_priv_t *) V->priv)->conf
+#define DECL_PRIV_HW(X, V ) ccx_xmega_hw_t * X = ((ccx_hw_xmega_priv_t *) V->priv)->conf
+
+#define GDO0_INT_LVL_gc PORT_INT0LVL_MED_gc
+#define GDO2_INT_LVL_gc PORT_INT1LVL_MED_gc
 
 
 typedef struct
@@ -116,7 +136,7 @@ bool ccx_xmega_ready(const ccx_hw_t * self)
 
 bool ccx_xmega_gdo0(const ccx_hw_t * self)
 {
-    DECL_HANDLE(handle, self);
+    DECL_PRIV_HW(handle, self);
     return (handle->gdo0_port->IN & handle->gdo0_pin) != 0;
 }
 
@@ -130,8 +150,46 @@ bool ccx_xmega_gdo1(const ccx_hw_t * self)
 
 bool ccx_xmega_gdo2(const ccx_hw_t * self)
 {
-    DECL_HANDLE(handle, self);
+    DECL_PRIV_HW(handle, self);
     return (handle->gdo2_port->IN & handle->gdo2_pin) != 0;
+}
+
+/** clear interrupt flag if any and enable it */
+void ccx_xmega_enable_gdo0(const ccx_hw_t * self)
+{
+	DECL_PRIV_HW(priv, self);
+	priv->gdo0_port->INTFLAGS &= ~(PORT_INT0IF_bm);
+	priv->gdo0_port->INT0MASK |= priv->gdo0_pin;
+}
+
+
+void ccx_xmega_enable_gdo1(const ccx_hw_t * self)
+{
+}
+
+
+void ccx_xmega_enable_gdo2(const ccx_hw_t * self)
+{
+	DECL_PRIV_HW(priv, self);
+	priv->gdo2_port->INTFLAGS &= ~(PORT_INT1IF_bm);
+	priv->gdo2_port->INT1MASK |= priv->gdo2_pin;
+}
+
+
+void ccx_xmega_disable_gdo0(const ccx_hw_t * self)
+{
+	DECL_PRIV_HW(priv, self);
+	priv->gdo0_port->INTCTRL &= ~GDO0_INT_LVL_gc;
+}
+
+void ccx_xmega_disable_gdo1(const ccx_hw_t * self)
+{
+}
+
+void ccx_xmega_disable_gdo2(const ccx_hw_t * self)
+{
+	DECL_PRIV_HW(priv, self);
+	priv->gdo2_port->INTCTRL &= ~GDO2_INT_LVL_gc;
 }
 
 
@@ -213,14 +271,9 @@ volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin)
 }
 
 
-void ccx_xmega_init_cleanup(const ccx_hw_t * self)
-{
-    DECL_HANDLE(handle, self);
-    handle->gdo0_port->INTFLAGS = handle->gdo0_port->INTFLAGS & ~(PORT_INT0IF_bm);
-    handle->gdo2_port->INTFLAGS = handle->gdo2_port->INTFLAGS & ~(PORT_INT1IF_bm);
-}
-
-
+/**
+ * GDOx interrupts should be disabled by default
+ */
 ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 {
 	if (gdo0_semaphore == NULL) {
@@ -232,17 +285,27 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 	}
 
     hw_if->chip_select = &ccx_xmega_chip_select;
+    hw_if->chip_release = &ccx_xmega_chip_release;
+
     hw_if->write = &ccx_xmega_write;
     hw_if->ready = &ccx_xmega_ready;
 	hw_if->wait_ready = &ccx_xmega_wait_ready;
+
     hw_if->gdo0 = &ccx_xmega_gdo0;
 	hw_if->gdo1 = &ccx_xmega_gdo1;
     hw_if->gdo2 = &ccx_xmega_gdo2;
+
 	hw_if->wait_gdo0 = &ccx_xmega_wait_gdo0;
 	hw_if->wait_gdo1 = &ccx_xmega_wait_gdo1;
 	hw_if->wait_gdo2 = &ccx_xmega_wait_gdo2;
-    hw_if->chip_release = &ccx_xmega_chip_release;
-    hw_if->init_cleanup = &ccx_xmega_init_cleanup;
+
+	hw_if->enable_gdo0 = &ccx_xmega_enable_gdo0;
+	hw_if->enable_gdo1 = &ccx_xmega_enable_gdo1;
+	hw_if->enable_gdo2 = &ccx_xmega_enable_gdo2;
+
+	hw_if->disable_gdo0 = &ccx_xmega_disable_gdo0;
+	hw_if->disable_gdo1 = &ccx_xmega_disable_gdo1;
+	hw_if->disable_gdo2 = &ccx_xmega_disable_gdo2;
 
 	ccx_hw_xmega_priv_t * priv = pvPortMalloc(sizeof(ccx_hw_xmega_priv_t));
 	priv->conf = conf;
@@ -252,14 +315,14 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
     volatile uint8_t * gdo0_pinctrl = port_pin_control(conf->gdo0_port, conf->gdo0_pin);
     *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_RISING_gc;
-    conf->gdo0_port->INT0MASK = conf->gdo0_pin;
-    conf->gdo0_port->INTCTRL |= PORT_INT0LVL_MED_gc;
+    conf->gdo0_port->INT0MASK &= ~(conf->gdo0_pin);
+    conf->gdo0_port->INTCTRL |= GDO0_INT_LVL_gc;
 
     conf->gdo2_port->DIRCLR = conf->gdo2_pin;
     volatile uint8_t * gdo2_pinctrl = port_pin_control(conf->gdo2_port, conf->gdo2_pin);
     *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_RISING_gc;
-    conf->gdo2_port->INT1MASK = conf->gdo2_pin;
-    conf->gdo2_port->INTCTRL |= PORT_INT1LVL_MED_gc;
+    conf->gdo2_port->INT1MASK &= ~(conf->gdo2_pin);
+    conf->gdo2_port->INTCTRL |= GDO2_INT_LVL_gc;
 
     PMIC.CTRL |= PMIC_MEDLVLEN_bm;
 

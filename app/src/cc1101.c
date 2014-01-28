@@ -310,41 +310,6 @@ uint8_t cc1101_rssi_decode(uint8_t rssi_enc)
 }
 
 
-int8_t cc1101_transmit(const rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr)
-{
-	DECL_HW(hw, self);
-	DECL_LOCK(lock, self);
-
-	if ( !acquire_lock(lock) ) {
-		return RF_TRANSMIT_TIMEOUT;
-	}
-
-	ccx_chip_select(hw);
-	ccx_wait_ready(hw);
-
-	cc1101_write(hw, CCx_TXFIFO, data_size + 2);
-	cc1101_write(hw, CCx_TXFIFO, dst_addr);
-	cc1101_write(hw, CCx_TXFIFO, src_addr);
-	cc1101_burst_write(hw, CCx_TXFIFO, data, data_size);
-	ccx_chip_release(hw);
-
-	ccx_chip_select(hw);
-	ccx_wait_ready(hw);
-
-	cc1101_wait_transmission_allowed(hw);
-
-	cc1101_strobe_transmit(hw);
-
-	uint8_t result = cc1101_wait_transmission_finished(hw);
-
-	ccx_chip_release(hw);
-	
-	release_lock(lock);
-
-	return result;
-}
-
-
 /**
  * As described in Errata http://www.ti.com/lit/er/swrz020d/swrz020d.pdf during transmission
  * it is important to read status byte twice and only once both statuses are equals it value
@@ -504,7 +469,7 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 }
 
 
-void cc1101_prepare(const rf_t * rf, const void * payload, uint16_t payload_len)
+void cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_len)
 {
 	// TODO: flush TX buffer
 	DECL_HW(hw, self);
@@ -514,32 +479,65 @@ void cc1101_prepare(const rf_t * rf, const void * payload, uint16_t payload_len)
 		return RF_TX_ERR;
 	}
 
-	cc1101_chip_select(hw);
+	ccx_chip_select(hw);
 	cc1101_strobe_flush_tx(hw);
 
 	// TODO: support situation if a packet for transmission is bigger then TX packet buffer
-	cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload);
+	cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, payload_len);
 
-	cc1101_chip_release(hw);
+	ccx_chip_release(hw);
 	release_lock(lock);
 }
 
 /**
  * This module knows nothing about a packet structure
  */
-void cc1101_transmit2(const rf_t * rf)
+void cc1101_transmit(const rf_t * rf)
 {
+/*
+	DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+
+	if ( !acquire_lock(lock) ) {
+		return RF_TRANSMIT_TIMEOUT;
+	}
+
+	ccx_chip_select(hw);
+	ccx_wait_ready(hw);
+
+	cc1101_write(hw, CCx_TXFIFO, data_size + 2);
+	cc1101_write(hw, CCx_TXFIFO, dst_addr);
+	cc1101_write(hw, CCx_TXFIFO, src_addr);
+	cc1101_burst_write(hw, CCx_TXFIFO, data, data_size);
+	ccx_chip_release(hw);
+
+	ccx_chip_select(hw);
+	ccx_wait_ready(hw);
+
+	cc1101_wait_transmission_allowed(hw);
+
+	cc1101_strobe_transmit(hw);
+
+	uint8_t result = cc1101_wait_transmission_finished(hw);
+
+	ccx_chip_release(hw);
+	
+	release_lock(lock);
+
+	return result;
+*/
 }
 
 
-int8_t cc1101_send(const rf_t * rf, const void * payload, uint16_t payload_len)
+int8_t cc1101_send(const rf_t * self, const void * payload, uint16_t payload_len)
 {
-	int8_t result = cc1101_prepare(rf, payload, payload_len);
+	/*int8_t result = cc1101_prepare(self, payload, payload_len);
 	if (RF_TX_OK != result) {
 		return result;
 	}
 
-	cc1101_transmit(rf);
+	cc1101_transmit(rf);*/
+	return 0;
 }
 
 
@@ -559,8 +557,4 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 
 	cc1101_reset(hw);
 	cc1101_configure(hw);
-
-    if (NULL != hw->init_cleanup) {
-        ccx_init_cleanup(hw);
-    }
 }

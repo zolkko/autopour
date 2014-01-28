@@ -29,8 +29,6 @@ void app_task(void * params)
 	uint8_t partnum = rf_part_number(rf);
 
     printf("Transceiver cc1101 part number %d version %d\r\n", partnum, version);
-	
-	// TODO: flush TX and RX
 
     uint8_t counter = 0;
     while (true) {
@@ -38,13 +36,11 @@ void app_task(void * params)
         int written = snprintf((char *) buff, 20, "main-task %d\r\n", counter);
         if (written > 0) {
             printf((const char *)buff);
-			rf_transmit(rf, buff, written, 0, 0);
+			rf_senf(rf, buff, written);
         }
 
-        if (rf_can_receive(rf, 1000) == RF_RECEIVE_OK)
-        {
-            // TODO: process incoming data
-        }
+		vTaskDelay(1000);
+
         counter++;
     }
 
