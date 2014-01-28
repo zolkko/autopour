@@ -124,6 +124,10 @@
 #define GDOx_CFG_RX_THR_RX_THR   0x00
 #define GDOx_CFG_RX_THR_RX_EMPTY 0x01
 
+// associated to the TX FIFO: asserts when the TX FIFO is filled above TXFIFO_THR.
+// De-asserts when TX FIFO lower threshold.
+#define GDOx_CFG_RX_THR_TX_THR_gc 0x02
+
 #define GDOx_CFG_PKT_RECEIVED_gc     0x07
 #define GDOx_CFG_PREAMBLE_QUALITY_gc 0x08
 #define GDOx_CFG_CCA_gc              0x09

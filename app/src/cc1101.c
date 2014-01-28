@@ -23,9 +23,30 @@
 #endif
 
 
+#define CC1101_PRIV_STATE_TX_START  0
+#define CC1101_PRIV_STATE_TX_WAIT   1
+#define CC1101_PRIV_STATE_RX_START  2
+#define CC1101_PRIV_STATE_RX_WAIT   3
+
+
+typedef struct {
+	uint16_t bytes_left;        // Used to keep track of how many bytes are left to be written to the TX FIFO
+	uint8_t iterations;         // For packets greater than 64 bytes, this variable is used to keep
+	                            // track of how many time the TX FIFO should be re-filled to its limit
+	uint8_t * buffer;           // Pointer to current position in the txBuffer
+	bool remaining_data;        // When this flag is set, the TX FIFO should not be filled entirely
+	bool packet_sent;           // Flag set when GDO0 indicates that the packet is sent
+	bool pkt_format;            // infinite or fixed packet mode
+} rf_tx_buffer_t;
+
+
 typedef struct {
 	ccx_hw_t * hw;
 	xSemaphoreHandle lock;
+
+	uint8_t priv_state;
+	rf_tx_buffer_t tx_buffer;
+
 } rf_private_t;
 
 
@@ -73,7 +94,9 @@ static int8_t cc1101_receive(const rf_t * self, uint8_t * data, uint8_t * data_l
 
 static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 
-#define DECL_HW(X, V) ccx_hw_t * X = ((rf_private_t *) V->priv)->hw
+#define DECL_PRIV(X, V) rf_private_t * X = (rf_private_t *) V->priv
+
+#define DECL_HW(X, V)   ccx_hw_t * X = ((rf_private_t *) V->priv)->hw
 
 #define DECL_LOCK(X, V) xSemaphoreHandle X = ((rf_private_t *) V->priv)->lock
 
@@ -469,31 +492,79 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 }
 
 
-void cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_len)
+uint8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_len)
 {
-	// TODO: flush TX buffer
 	DECL_HW(hw, self);
+	DECL_PRIV(priv, self);
 	DECL_LOCK(lock, self);
 
 	if (!acquire_lock(lock)) {
-		return RF_TX_ERR;
+		return RF_TX_TIMEOUT;
 	}
 
+	priv->tx_buffer.bytes_left = 0;
+	priv->tx_buffer.iterations = 0;
+	priv->tx_buffer.remaining_data = false;
+	priv->tx_buffer.packet_sent = false;
+	priv->tx_buffer.buffer = NULL;
+	priv->tx_buffer.packet_sent = 0;
+	priv->tx_buffer.pkt_format = false;
+
+	#define MAX_VARIABLE_LENGTH        0
+	#define AVAILABLE_BYTES_IN_TX_FIFO 0
+
+	//
+	/*priv->tx_buffer.pkt_format = false;
+	priv->tx_buffer.bytes_left = payload_len;
+	uint8_t fixed_packet_length = payload_len % (MAX_VARIABLE_LENGTH + 1);
+
 	ccx_chip_select(hw);
-	cc1101_strobe_flush_tx(hw);
-
-	// TODO: support situation if a packet for transmission is bigger then TX packet buffer
-	cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, payload_len);
-
+	ccx_wait_ready(hw);
+	cc1101_burst_write(hw, CCx_TXFIFO, payload, CCx_FIFO_SIZE); // only if 
 	ccx_chip_release(hw);
+
+	priv->tx_buffer.bytes_left -= CCx_FIFO_SIZE;
+	priv->tx_buffer.buffer = ((uint8_t *) payload) + CCx_FIFO_SIZE;
+	priv->tx_buffer.iterations = (priv->tx_buffer.bytes_left / AVAILABLE_BYTES_IN_TX_FIFO);*/
+
+	/*ccx_chip_select(hw);
+	ccx_wait_ready(hw);
+	cc1101_write(hw, CCx_PKTLEN, fixed_packet_length);
+	ccx_chip_release(hw);*/
+
 	release_lock(lock);
 }
 
 /**
  * This module knows nothing about a packet structure
  */
-void cc1101_transmit(const rf_t * rf)
+void cc1101_transmit(const rf_t * self)
 {
+	DECL_HW(hw, self);
+	DECL_LOCK(lock, self);
+
+	if ( !acquire_lock(lock) ) {
+		return; // lock - timeout (can retry later
+	}
+
+	ccx_chip_select(hw);
+	ccx_wait_ready(hw);
+
+	// prepare buffer
+	// if ()
+
+
+	cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_RX_THR_TX_THR_gc);
+	cc1101_write(hw, CCx_IOCFG0D, 0x06);
+
+	ccx_enable_gdo0(hw);
+	ccx_enable_gdo1(hw);
+
+	// 
+
+	ccx_chip_release(hw);
+	release_lock(lock);
+
 /*
 	DECL_HW(hw, self);
 	DECL_LOCK(lock, self);
