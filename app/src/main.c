@@ -40,6 +40,7 @@ void app_task(void * params)
         int written = snprintf((char *) (&buff[3]), 17, "main-task %d\r\n", counter);
         if (written > 0) {
             printf((const char *)(&buff[3]));
+            buff[0] = written + 2;
             rf_send(rf, buff, written + 3);
         }
         
