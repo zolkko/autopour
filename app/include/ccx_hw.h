@@ -7,15 +7,26 @@ typedef struct ccx_hw {
     void (*chip_select)  (const struct ccx_hw * self);
     uint8_t (*write)     (const struct ccx_hw * self, uint8_t data);
     bool (*ready)        (const struct ccx_hw * self);
+	
 	void (*wait_ready)   (const struct ccx_hw * self);
-    bool (*gdo0)         (const struct ccx_hw * self);
+    
+	bool (*gdo0)         (const struct ccx_hw * self);
+	void (*enable_gdo0)  (const struct ccx_hw * self);
+	void (*disable_gdo0) (const struct ccx_hw * self);
 	bool (*wait_gdo0)    (const struct ccx_hw * self, portTickType timeout);
+	
 	bool (*gdo1)         (const struct ccx_hw * self);
+	void (*enable_gdo1)  (const struct ccx_hw * self);
+	void (*disable_gdo1) (const struct ccx_hw * self);
 	bool (*wait_gdo1)    (const struct ccx_hw * self, portTickType timeout);
+	
     bool (*gdo2)         (const struct ccx_hw * self);
+	void (*enable_gdo2)  (const struct ccx_hw * self);
+	void (*disable_gdo2) (const struct ccx_hw * self);
 	bool (*wait_gdo2)    (const struct ccx_hw * self, portTickType timeout);
+	
     void (*chip_release) (const struct ccx_hw * self);
-    void (*init_cleanup) (const struct ccx_hw * self);
+
     void * priv;
 } ccx_hw_t;
 
@@ -28,16 +39,23 @@ typedef struct ccx_hw {
 
 #define ccx_wait_ready(X)   X->wait_ready(X)
 
-#define ccx_gdo0(X)         X->gdo0(X)
 
+#define ccx_gdo0(X)         X->gdo0(X)
+/** enable interrupt handling of GDO0 signal */
+#define ccx_enable_gdo0(X)  X->enable_gdo0(X)
+/** disable gdo0 interrupt */
+#define ccx_disable_gdo0(X) X->disable_gdo0(X)
 #define ccx_wait_gdo0(X, T) X->wait_gdo0(X, T)
 
-#define ccx_gdo1(X)         X->gdo1(X)
 
+#define ccx_gdo1(X)         X->gdo1(X)
+#define ccx_enable_gdo1(X)  X->enable_gdo1(X)
+#define ccx_disable_gdo1(X) X->disable_gdo1(X)
 #define ccx_wait_gdo1(X, T) X->wait_gdo1(X, T)
 
 #define ccx_gdo2(X)         X->gdo2(X)
-
+#define ccx_enable_gdo2(X)  X->enable_gdo2(X)
+#define ccx_disable_gdo2(X) X->disable_gdo2(X)
 #define ccx_wait_gdo2(X, T) X->wait_gdo2(X, T)
 
 #define ccx_chip_release(X) X->chip_release(X)

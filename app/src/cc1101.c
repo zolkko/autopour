@@ -568,8 +568,4 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 
 	cc1101_reset(hw);
 	cc1101_configure(hw);
-
-    if (NULL != hw->init_cleanup) {
-        ccx_init_cleanup(hw);
-    }
 }
