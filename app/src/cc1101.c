@@ -23,7 +23,14 @@
 #endif
 
 
+#define CC1101_MAX_VARIABLE_LENGTH 255
+#define CC1101_AVAILABLE_BYTES_IN_TX_FIFO 60
+
 typedef struct {
+    uint8_t * buff;
+    uint16_t  buff_length;
+    uint8_t   iterations;
+    
 	ccx_hw_t * hw;
 	xSemaphoreHandle lock;
 } rf_private_t;
@@ -75,6 +82,8 @@ static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 
 #define DECL_HW(X, V) ccx_hw_t * X = ((rf_private_t *) V->priv)->hw
 
+#define DECL_PRIV(X, V) rf_private_t * X = V->priv
+
 #define DECL_LOCK(X, V) xSemaphoreHandle X = ((rf_private_t *) V->priv)->lock
 
 #define acquire_lock(X) xSemaphoreTake(X, portMAX_DELAY)
@@ -85,7 +94,7 @@ static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 	GDOx_CFG_CCA_gc,			// CCx_IOCFG2
 	GDOx_CFG_HI_Z,				// CCx_IOGDO1 - default 3-state
-	GDOx_CFG_RX_THR_RX_EMPTY,	// CCx_IOCFG0D
+	GD0x_CFG_SYNC_WORD_gc,	    // CCx_IOCFG0D
 
 	0x0e,						// CCx_FIFOTHR
 
@@ -310,41 +319,6 @@ uint8_t cc1101_rssi_decode(uint8_t rssi_enc)
 }
 
 
-int8_t cc1101_transmit(const rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr)
-{
-	DECL_HW(hw, self);
-	DECL_LOCK(lock, self);
-
-	if ( !acquire_lock(lock) ) {
-		return RF_TRANSMIT_TIMEOUT;
-	}
-
-	ccx_chip_select(hw);
-	ccx_wait_ready(hw);
-
-	cc1101_write(hw, CCx_TXFIFO, data_size + 2);
-	cc1101_write(hw, CCx_TXFIFO, dst_addr);
-	cc1101_write(hw, CCx_TXFIFO, src_addr);
-	cc1101_burst_write(hw, CCx_TXFIFO, data, data_size);
-	ccx_chip_release(hw);
-
-	ccx_chip_select(hw);
-	ccx_wait_ready(hw);
-
-	cc1101_wait_transmission_allowed(hw);
-
-	cc1101_strobe_transmit(hw);
-
-	uint8_t result = cc1101_wait_transmission_finished(hw);
-
-	ccx_chip_release(hw);
-	
-	release_lock(lock);
-
-	return result;
-}
-
-
 /**
  * As described in Errata http://www.ti.com/lit/er/swrz020d/swrz020d.pdf during transmission
  * it is important to read status byte twice and only once both statuses are equals it value
@@ -504,31 +478,64 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 }
 
 
-void cc1101_prepare(const rf_t * rf, const void * payload, uint16_t payload_len)
+int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_len)
 {
-	// TODO: flush TX buffer
-	DECL_HW(hw, self);
-	DECL_LOCK(lock, self);
+    DECL_LOCK(lock, self);
 
 	if (!acquire_lock(lock)) {
-		return RF_TX_ERR;
+		return RF_TX_TIMEOUT;
 	}
 
-	cc1101_chip_select(hw);
+    DECL_HW(hw, self);
+    DECL_PRIV(priv, self);
+
+    ccx_chip_select(hw);
 	cc1101_strobe_flush_tx(hw);
+    
+    uint8_t tail_length = payload_len % (CC1101_MAX_VARIABLE_LENGTH + 1);
+    cc1101_write(hw, CCx_PKTLEN, tail_length);
 
-	// TODO: support situation if a packet for transmission is bigger then TX packet buffer
-	cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload);
+    uint16_t bytes_to_send = payload_len > CCx_FIFO_SIZE ? CCx_FIFO_SIZE : payload_len;
+    cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, bytes_to_send);
+    ccx_chip_release(hw);
 
-	cc1101_chip_release(hw);
+    priv->buff = payload + bytes_to_send;
+    priv->buff_length = payload_len - bytes_to_send;
+    priv->iterations  = priv->buff_length / CC1101_AVAILABLE_BYTES_IN_TX_FIFO;
+    
+    // TODO: reconfigure and enable interrupts into TX mode
+
 	release_lock(lock);
+
+    return RF_TX_OK;
 }
+
 
 /**
  * This module knows nothing about a packet structure
  */
-void cc1101_transmit2(const rf_t * rf)
+int8_t cc1101_transmit(const rf_t * self)
 {
+    DECL_HW(hw, self);
+    DECL_LOCK(lock, self);
+
+    if ( !acquire_lock(lock) ) {
+        return RF_TX_TIMEOUT;
+    }
+
+    ccx_chip_select(hw);
+    ccx_wait_ready(hw);
+
+    cc1101_wait_transmission_allowed(hw);
+
+    cc1101_strobe_transmit(hw);
+
+    cc1101_wait_transmission_finished(hw);
+
+    ccx_chip_release(hw);
+    release_lock(lock);
+
+    return RF_TX_OK;
 }
 
 
@@ -539,7 +546,7 @@ int8_t cc1101_send(const rf_t * rf, const void * payload, uint16_t payload_len)
 		return result;
 	}
 
-	cc1101_transmit(rf);
+	return cc1101_transmit(rf);
 }
 
 
@@ -547,7 +554,9 @@ void cc1101_init(rf_t * rf, ccx_hw_t * hw)
 {
     rf->version = &cc1101_version;
 	rf->part_number = &cc1101_part_number;
+    rf->prepare = &cc1101_prepare;
 	rf->transmit = &cc1101_transmit;
+    rf->send = &cc1101_send;
 	rf->receive = &cc1101_receive;
 	rf->can_receive = &cc1101_can_receive;
 

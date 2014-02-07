@@ -5,13 +5,12 @@
 typedef struct __rf_t {    
     uint8_t (*version)          (const struct __rf_t * self);
 	uint8_t (*part_number)      (const struct __rf_t * self);
-	int8_t  (*transmit)         (const struct __rf_t * self, const uint8_t * data, uint8_t data_size, uint8_t src_addr, uint8_t dst_addr);
 	int8_t  (*receive)          (const struct __rf_t * self, uint8_t * data, uint8_t * data_size, uint8_t * src_addr, uint8_t * dst_addr);
 	uint8_t (*can_receive)      (const struct __rf_t * self, portTickType ticks);
 
 	/** write a packet into transceiver buffer */
     int8_t  (*prepare)          (const struct __rf_t * self, const void * payload, uint16_t payload_len);
-	int8_t  (*transmit2)        (const struct __rf_t * self);
+	int8_t  (*transmit)         (const struct __rf_t * self);
 	int8_t  (*send)             (const struct __rf_t * self, const void * payload, uint16_t payload_len);
 	
 	int8_t  (*read)             (const struct __rf_t * self, void * buffer, uint16_t buffer_len);
@@ -44,7 +43,9 @@ typedef struct __rf_t {
 #define RF_TRANSMIT_FAIL            0
 #define RF_TRANSMIT_UNDERFLOW      -1
 #define RF_TRANSMIT_TIMEOUT        -2
-#define rf_transmit(X, D, S, T, F)  X->transmit(X, D, S, T, F)
+#define rf_prepare(X, P, L)         X->prepare(X, P, L)
+#define rf_transmit(X)              X->transmit(X)
+#define rf_send(X, P, L)            X->send(X, P, L)
 
 #define RF_RECEIVE_OK               1
 #define RF_RECEIVE_FAIL             0
