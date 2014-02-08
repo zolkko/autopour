@@ -501,6 +501,9 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_
     // Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR
     // De-asserts when TX FIFO is drained below TX_FIFOR_THR
     cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_TX_THR_TX_THR_gc);
+    
+    // asserts when sync word transceived/received
+    cc1101_write(hw, CCx_IOCFG0, GDOx_CFG_SYNC_WORD_gc);
 
     // Compute and populate data to be transmitted during first TX call
     uint16_t bytes_to_send = payload_len > CCx_FIFO_SIZE ? CCx_FIFO_SIZE : payload_len;
@@ -535,7 +538,11 @@ int8_t cc1101_transmit(const rf_t * self)
 
     cc1101_wait_transmission_allowed(hw);
 
+    ccx_enable_gdo0(hw);
     cc1101_strobe_transmit(hw);
+
+    ccx_wait_gdo0(hw, 3000);
+    ccx_disable_gdo0(hw);
 
     cc1101_wait_transmission_finished(hw);
 

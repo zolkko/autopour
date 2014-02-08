@@ -58,7 +58,10 @@ static inline volatile uint8_t * port_pin_control(PORT_t * port, uint8_t pin);
 #define DECL_HANDLE(X, V)   ccx_xmega_hw_t * X = ((ccx_hw_xmega_priv_t *) V->priv)->conf
 #define DECL_PRIV_HW(X, V ) ccx_xmega_hw_t * X = ((ccx_hw_xmega_priv_t *) V->priv)->conf
 
+#define RF_PMIC_LEVEL_bm PMIC_MEDLVLEN_bm
+
 #define GDO0_INT_LVL_gc PORT_INT0LVL_MED_gc
+
 #define GDO2_INT_LVL_gc PORT_INT1LVL_MED_gc
 
 
@@ -179,7 +182,7 @@ void ccx_xmega_enable_gdo2(const ccx_hw_t * self)
 void ccx_xmega_disable_gdo0(const ccx_hw_t * self)
 {
 	DECL_PRIV_HW(priv, self);
-	priv->gdo0_port->INTCTRL &= ~GDO0_INT_LVL_gc;
+    priv->gdo0_port->INT0MASK &= ~(priv->gdo0_pin);
 }
 
 void ccx_xmega_disable_gdo1(const ccx_hw_t * self)
@@ -189,7 +192,7 @@ void ccx_xmega_disable_gdo1(const ccx_hw_t * self)
 void ccx_xmega_disable_gdo2(const ccx_hw_t * self)
 {
 	DECL_PRIV_HW(priv, self);
-	priv->gdo2_port->INTCTRL &= ~GDO2_INT_LVL_gc;
+    priv->gdo2_port->INT1MASK &= ~(priv->gdo2_pin);
 }
 
 
@@ -314,17 +317,17 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
     volatile uint8_t * gdo0_pinctrl = port_pin_control(conf->gdo0_port, conf->gdo0_pin);
-    *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_RISING_gc;
+    *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_BOTHEDGES_gc; // PORT_ISC_RISING_gc
     conf->gdo0_port->INT0MASK &= ~(conf->gdo0_pin);
     conf->gdo0_port->INTCTRL |= GDO0_INT_LVL_gc;
 
     conf->gdo2_port->DIRCLR = conf->gdo2_pin;
     volatile uint8_t * gdo2_pinctrl = port_pin_control(conf->gdo2_port, conf->gdo2_pin);
-    *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_RISING_gc;
+    *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_BOTHEDGES_gc; // PORT_ISC_RISING_gc
     conf->gdo2_port->INT1MASK &= ~(conf->gdo2_pin);
     conf->gdo2_port->INTCTRL |= GDO2_INT_LVL_gc;
 
-    PMIC.CTRL |= PMIC_MEDLVLEN_bm;
+    PMIC.CTRL |= RF_PMIC_LEVEL_bm;
 
     ccx_hw_xmega_init_spi(conf);
 

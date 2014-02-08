@@ -28,7 +28,7 @@
 #define CCx_REG_BEGIN    0x00
 #define CCx_IOCFG2       0x00        // GDO2 output pin configuration
 #define CCx_IOCFG1       0x01        // GDO1 output pin configuration
-#define CCx_IOCFG0D      0x02        // GDO0 output pin configuration
+#define CCx_IOCFG0       0x02        // GDO0 output pin configuration
 #define CCx_FIFOTHR      0x03        // RX FIFO and TX FIFO thresholds
 #define CCx_SYNC1        0x04        // Sync word, high unsigned char
 #define CCx_SYNC0        0x05        // Sync word, low unsigned char
@@ -141,22 +141,22 @@ the radio enters RXFIFO_OVERFLOW state. */
 #define GDOx_CFG_HI_Z            0x2e
 #define GDOx_CFG_HW_0            0x2f
 
-#define GDOx_CFG_CLK_XOSC1       0x30
-#define GDOx_CFG_CLK_XOSC1_5     0x31
-#define GDOx_CFG_CLK_XOSC2       0x32
-#define GDOx_CFG_CLK_XOSC3       0x33
-#define GDOx_CFG_CLK_XOSC4       0x34
-#define GDOx_CFG_CLK_XOSC6       0x35
-#define GDOx_CFG_CLK_XOSC8       0x36
-#define GDOx_CFG_CLK_XOSC12      0x37
-#define GDOx_CFG_CLK_XOSC16      0x38
-#define GDOx_CFG_CLK_XOSC24      0x39
-#define GDOx_CFG_CLK_XOSC32      0x3a
-#define GDOx_CFG_CLK_XOSC48      0x3b
-#define GDOx_CFG_CLK_XOSC64      0x3c
-#define GDOx_CFG_CLK_XOSC96      0x3d
-#define GDOx_CFG_CLK_XOSC128     0x3e
-#define GDOx_CFG_CLK_XOSC192     0x3f
+#define GDOx_CFG_CLK_XOSC1_gc    0x30
+#define GDOx_CFG_CLK_XOSC1_5_gc  0x31
+#define GDOx_CFG_CLK_XOSC2_gc    0x32
+#define GDOx_CFG_CLK_XOSC3_gc    0x33
+#define GDOx_CFG_CLK_XOSC4_gc    0x34
+#define GDOx_CFG_CLK_XOSC6_gc    0x35
+#define GDOx_CFG_CLK_XOSC8_gc    0x36
+#define GDOx_CFG_CLK_XOSC12_gc   0x37
+#define GDOx_CFG_CLK_XOSC16_gc   0x38
+#define GDOx_CFG_CLK_XOSC24_gc   0x39
+#define GDOx_CFG_CLK_XOSC32_gc   0x3a
+#define GDOx_CFG_CLK_XOSC48_gc   0x3b
+#define GDOx_CFG_CLK_XOSC64_gc   0x3c
+#define GDOx_CFG_CLK_XOSC96_gc   0x3d
+#define GDOx_CFG_CLK_XOSC128_gc  0x3e
+#define GDOx_CFG_CLK_XOSC192_gc  0x3f
 
 
 /**
