@@ -121,13 +121,17 @@
 #define CCx_PACKT_LEN   (CCx_FIFO_SIZE - 3)
 
 
-#define GDOx_CFG_RX_THR_RX_THR   0x00
-#define GDOx_CFG_RX_THR_RX_EMPTY 0x01
+#define GDOx_CFG_RX_THR_RX_THR_gc   0x00
+#define GDOx_CFG_RX_THR_RX_EMPTY_gc 0x01
 
-/** Assetswhen sync word has been sent / received, and de-asserts at the end of the packet. In Rx the pin will
+/** Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR.
+    De-asserts when TX FIFO is drained below TX_FIFOR_THR */
+#define GDOx_CFG_TX_THR_TX_THR_gc   0x02
+
+/** Assets when sync word has been sent / received, and de-asserts at the end of the packet. In Rx the pin will
 also de-assert when a packet is discarded due to address or maximum length filtering or when
 the radio enters RXFIFO_OVERFLOW state. */
-#define GD0x_CFG_SYNC_WORD_gc        0x06
+#define GDOx_CFG_SYNC_WORD_gc        0x06
 #define GDOx_CFG_PKT_RECEIVED_gc     0x07
 #define GDOx_CFG_PREAMBLE_QUALITY_gc 0x08
 #define GDOx_CFG_CCA_gc              0x09

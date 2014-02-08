@@ -23,8 +23,10 @@
 #endif
 
 
-#define CC1101_MAX_VARIABLE_LENGTH 255
+#define CC1101_MAX_VARIABLE_LENGTH        255
 #define CC1101_AVAILABLE_BYTES_IN_TX_FIFO 60
+#define CC1101_FIFO_THR                   0x0e
+
 
 typedef struct {
     uint8_t * buff;
@@ -92,9 +94,9 @@ static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 
 
 const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
-	GDOx_CFG_CCA_gc,			// CCx_IOCFG2
+	GDOx_CFG_TX_THR_TX_THR_gc,	// CCx_IOCFG2
 	GDOx_CFG_HI_Z,				// CCx_IOGDO1 - default 3-state
-	GD0x_CFG_SYNC_WORD_gc,	    // CCx_IOCFG0D
+	GDOx_CFG_SYNC_WORD_gc,	    // CCx_IOCFG0D
 
 	0x0e,						// CCx_FIFOTHR
 
@@ -492,18 +494,23 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_
     ccx_chip_select(hw);
 	cc1101_strobe_flush_tx(hw);
     
+    // Set fixed packet length to the tail of the packet length to be transmitted
     uint8_t tail_length = payload_len % (CC1101_MAX_VARIABLE_LENGTH + 1);
     cc1101_write(hw, CCx_PKTLEN, tail_length);
+    
+    // Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR
+    // De-asserts when TX FIFO is drained below TX_FIFOR_THR
+    cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_TX_THR_TX_THR_gc);
 
+    // Compute and populate data to be transmitted during first TX call
     uint16_t bytes_to_send = payload_len > CCx_FIFO_SIZE ? CCx_FIFO_SIZE : payload_len;
-    cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, bytes_to_send);
-    ccx_chip_release(hw);
-
+    
     priv->buff = payload + bytes_to_send;
     priv->buff_length = payload_len - bytes_to_send;
     priv->iterations  = priv->buff_length / CC1101_AVAILABLE_BYTES_IN_TX_FIFO;
-    
-    // TODO: reconfigure and enable interrupts into TX mode
+
+    cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, bytes_to_send);
+    ccx_chip_release(hw);
 
 	release_lock(lock);
 
