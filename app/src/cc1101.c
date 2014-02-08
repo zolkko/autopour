@@ -497,6 +497,7 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_
     // Set fixed packet length to the tail of the packet length to be transmitted
     uint8_t tail_length = payload_len % (CC1101_MAX_VARIABLE_LENGTH + 1);
     cc1101_write(hw, CCx_PKTLEN, tail_length);
+    cc1101_write(hw, CCx_PKTCTRL0, CCx_PKTCTRL0_CRC_EN_bm | CCx_PKTCTRL0_LENGTH_FIXED_bm);
     
     // Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR
     // De-asserts when TX FIFO is drained below TX_FIFOR_THR
@@ -526,12 +527,13 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_
  */
 int8_t cc1101_transmit(const rf_t * self)
 {
-    DECL_HW(hw, self);
     DECL_LOCK(lock, self);
 
     if ( !acquire_lock(lock) ) {
         return RF_TX_TIMEOUT;
     }
+
+    DECL_HW(hw, self);
 
     ccx_chip_select(hw);
     ccx_wait_ready(hw);
@@ -540,9 +542,12 @@ int8_t cc1101_transmit(const rf_t * self)
 
     ccx_enable_gdo0(hw);
     cc1101_strobe_transmit(hw);
-
+    
+    // Wait for transmission begins
     ccx_wait_gdo0(hw, 3000);
     ccx_disable_gdo0(hw);
+    
+    // cc1101_write(hw, CCx_PKTCTRL0, CCx_PKTCTRL0_CRC_EN_bm | CCx_PKTCTRL0_LENGTH_INFINITE_bm);
 
     cc1101_wait_transmission_finished(hw);
 

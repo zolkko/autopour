@@ -120,17 +120,36 @@
 
 #define CCx_PACKT_LEN   (CCx_FIFO_SIZE - 3)
 
+/**
+ * Packet Control 0 register values
+ */
+#define CCx_PKTCTRL0_LENGTH_FIXED_bm     0x00
+#define CCx_PKTCTRL0_LENGTH_VARIABLE_bm  0x01
+#define CCx_PKTCTRL0_LENGTH_INFINITE_bm  0x02
 
+#define CCx_PKTCTRL0_CRC_EN_bm           0x04
+
+#define CCx_PKTCTRL0_FMT_NORMAL_bm       0x00
+#define CCx_PKTCTRL0_FMT_SYNC_SERIAL_bm  0x10
+#define CCx_PKTCTRL0_FMT_RANDOM_bm       0x20
+#define CCx_PKTCTRL0_FMT_ASYNC_SERIAL_bm 0x30
+
+#define CCx_PKTCTRL0_WHITE_DATA_bm       0x40
+
+
+/**
+ * GDOx configuration registers
+ */
 #define GDOx_CFG_RX_THR_RX_THR_gc   0x00
 #define GDOx_CFG_RX_THR_RX_EMPTY_gc 0x01
 
-/** Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR.
-    De-asserts when TX FIFO is drained below TX_FIFOR_THR */
+// Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR.
+// De-asserts when TX FIFO is drained below TX_FIFOR_THR
 #define GDOx_CFG_TX_THR_TX_THR_gc   0x02
 
-/** Assets when sync word has been sent / received, and de-asserts at the end of the packet. In Rx the pin will
-also de-assert when a packet is discarded due to address or maximum length filtering or when
-the radio enters RXFIFO_OVERFLOW state. */
+// Assets when sync word has been sent / received, and de-asserts at the end of the packet. In Rx the pin will
+// also de-assert when a packet is discarded due to address or maximum length filtering or when
+// the radio enters RXFIFO_OVERFLOW state.
 #define GDOx_CFG_SYNC_WORD_gc        0x06
 #define GDOx_CFG_PKT_RECEIVED_gc     0x07
 #define GDOx_CFG_PREAMBLE_QUALITY_gc 0x08
