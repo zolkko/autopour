@@ -177,6 +177,8 @@
 #define GDOx_CFG_CLK_XOSC128_gc  0x3e
 #define GDOx_CFG_CLK_XOSC192_gc  0x3f
 
+#define GDOx_CFG_INV_bm          0x40
+
 
 /**
  * Status byte bit-masks

@@ -9,9 +9,9 @@ typedef struct __rf_t {
 	uint8_t (*can_receive)      (const struct __rf_t * self, portTickType ticks);
 
 	/** write a packet into transceiver buffer */
-    int8_t  (*prepare)          (const struct __rf_t * self, const void * payload, uint16_t payload_len);
+    int8_t  (*prepare)          (const struct __rf_t * self, const void * payload, uint8_t payload_len);
 	int8_t  (*transmit)         (const struct __rf_t * self);
-	int8_t  (*send)             (const struct __rf_t * self, const void * payload, uint16_t payload_len);
+	int8_t  (*send)             (const struct __rf_t * self, const void * payload, uint8_t payload_len);
 
 	int8_t  (*read)             (const struct __rf_t * self, void * buffer, uint16_t buffer_len);
 	uint8_t (*channel_clear)    (const struct __rf_t * self);
@@ -33,6 +33,7 @@ typedef struct __rf_t {
 #define RF_TX_COLLISION -1
 #define RF_TX_NOACK     -2
 #define RF_TX_TIMEOUT   -3
+#define RF_TX_TOO_LONG  -4
 
 
 #define rf_version(X)               X->version(X)

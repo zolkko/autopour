@@ -23,16 +23,16 @@
 #endif
 
 
-#define CC1101_MAX_VARIABLE_LENGTH        255
-#define CC1101_AVAILABLE_BYTES_IN_TX_FIFO 60
-#define CC1101_FIFO_THR                   0x0e
+#define CC1101_FIFO_THR                   11
+#define CC1101_TX_FIFO_SIZE               20
+#define CC1101_TX_FIFO_CHUNK_SIZE         20
+#define CC1101_MAX_PACKET_LENGTH          127
 
 
 typedef struct {
     uint8_t * buff;
-    uint16_t  buff_length;
-    uint8_t   iterations;
-    
+    uint8_t   buff_length;
+
 	ccx_hw_t * hw;
 	xSemaphoreHandle lock;
 } rf_private_t;
@@ -480,8 +480,12 @@ uint8_t cc1101_can_receive(const rf_t * self, portTickType timeout)
 }
 
 
-int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_len)
+int8_t cc1101_prepare(const rf_t * self, const void * payload, uint8_t payload_len)
 {
+    if (payload_len > CC1101_MAX_PACKET_LENGTH) {
+        return RF_TX_TOO_LONG;
+    }
+    
     DECL_LOCK(lock, self);
 
 	if (!acquire_lock(lock)) {
@@ -495,23 +499,13 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint16_t payload_
 	cc1101_strobe_flush_tx(hw);
     
     // Set fixed packet length to the tail of the packet length to be transmitted
-    uint8_t tail_length = payload_len % (CC1101_MAX_VARIABLE_LENGTH + 1);
-    cc1101_write(hw, CCx_PKTLEN, tail_length);
+    cc1101_write(hw, CCx_PKTLEN, payload_len);
     cc1101_write(hw, CCx_PKTCTRL0, CCx_PKTCTRL0_CRC_EN_bm | CCx_PKTCTRL0_LENGTH_FIXED_bm);
-    
-    // Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR
-    // De-asserts when TX FIFO is drained below TX_FIFOR_THR
-    cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_TX_THR_TX_THR_gc);
-    
-    // asserts when sync word transceived/received
-    cc1101_write(hw, CCx_IOCFG0, GDOx_CFG_SYNC_WORD_gc);
 
     // Compute and populate data to be transmitted during first TX call
-    uint16_t bytes_to_send = payload_len > CCx_FIFO_SIZE ? CCx_FIFO_SIZE : payload_len;
-    
+    uint8_t bytes_to_send = payload_len > CC1101_TX_FIFO_SIZE ? CC1101_TX_FIFO_SIZE : payload_len;
     priv->buff = payload + bytes_to_send;
     priv->buff_length = payload_len - bytes_to_send;
-    priv->iterations  = priv->buff_length / CC1101_AVAILABLE_BYTES_IN_TX_FIFO;
 
     cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, bytes_to_send);
     ccx_chip_release(hw);
@@ -534,38 +528,99 @@ int8_t cc1101_transmit(const rf_t * self)
     }
 
     DECL_HW(hw, self);
+    DECL_PRIV(priv, self);
 
     ccx_chip_select(hw);
     ccx_wait_ready(hw);
 
     cc1101_wait_transmission_allowed(hw);
+    
+    // Associated to the TX FIFO: asserts when TX FIFO is filled above TXFIFO_THR
+    // De-asserts when TX FIFO is drained below TX_FIFOR_THR
+    cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_TX_THR_TX_THR_gc | GDOx_CFG_INV_bm);
 
-    ccx_enable_gdo0(hw);
+    // Asserts when sync word transceived/received de-asserts when
+    // packet has been transmitted plus inversion
+    cc1101_write(hw, CCx_IOCFG0, GDOx_CFG_SYNC_WORD_gc | GDOx_CFG_INV_bm);
+    
+    uint8_t current_size = 0;
+    cc1101_read(hw, CCx_TXBYTES, &current_size);
+
+    // ccx_enable_gdo2(hw);
     cc1101_strobe_transmit(hw);
-    
-    // Wait for transmission begins
-    ccx_wait_gdo0(hw, 3000);
-    ccx_disable_gdo0(hw);
-    
-    // cc1101_write(hw, CCx_PKTCTRL0, CCx_PKTCTRL0_CRC_EN_bm | CCx_PKTCTRL0_LENGTH_INFINITE_bm);
-
-    cc1101_wait_transmission_finished(hw);
-
     ccx_chip_release(hw);
+    
+    int chunk_counter = 0;
+
+    ccx_chip_select(hw);
+    ccx_wait_ready(hw);
+    while (priv->buff_length > 0) {
+        if (ccx_gdo2(hw)/* || ccx_wait_gdo2(hw, 0xffff)*/) {
+            uint8_t * buff_ref = priv->buff;
+            uint8_t * buff_len = priv->buff_length;
+
+            // try to prevent underflow condition
+            do {
+                cc1101_write(hw, CCx_TXFIFO, *buff_ref);
+                buff_ref++;
+                buff_len--;
+            }
+            while (buff_len > 0 && ccx_gdo2(hw));
+
+            uint8_t is_underflow = 0;
+            uint8_t test_underflow = 0;
+
+            cc1101_read(hw, CCx_TXBYTES, &test_underflow);
+            if (test_underflow & 0x80) {
+                is_underflow = 1;
+            }
+
+            if (buff_len > 0) {
+                uint8_t chunk_size = buff_len > CC1101_TX_FIFO_CHUNK_SIZE ? CC1101_TX_FIFO_CHUNK_SIZE : buff_len;
+                cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) buff_ref, chunk_size);
+                ccx_chip_release(hw);
+
+                buff_ref += chunk_size;
+                buff_len -= chunk_size;
+
+                ccx_chip_select(hw);
+                ccx_wait_ready(hw);
+            }
+
+            cc1101_read(hw, CCx_TXBYTES, &test_underflow);
+            if (test_underflow & 0x80) {
+                is_underflow = 1;
+            }
+
+            priv->buff = buff_ref;
+            priv->buff_length = buff_len;
+            chunk_counter++;
+        }
+    }
+    ccx_chip_release(hw);
+    ccx_disable_gdo2(hw);
+    
+    // TODO: test for underflow or timeout (need to flush TX buffer in this case)
+
+    // ccx_chip_select(hw);
+    // ccx_wait_ready(hw);
+    // cc1101_wait_transmission_finished(hw);
+    // ccx_chip_release(hw);
+    
     release_lock(lock);
 
     return RF_TX_OK;
 }
 
 
-int8_t cc1101_send(const rf_t * rf, const void * payload, uint16_t payload_len)
+int8_t cc1101_send(const rf_t * self, const void * payload, uint8_t payload_len)
 {
-	int8_t result = cc1101_prepare(rf, payload, payload_len);
+	int8_t result = cc1101_prepare(self, payload, payload_len);
 	if (RF_TX_OK != result) {
 		return result;
 	}
 
-	return cc1101_transmit(rf);
+	return cc1101_transmit(self);
 }
 
 

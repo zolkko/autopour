@@ -93,8 +93,13 @@ ISR(PORTA_INT0_vect)
  */
 ISR(PORTA_INT1_vect)
 {
+    static portBASE_TYPE task_woken;
 	if (gdo2_semaphore != NULL) {
-		xSemaphoreGiveFromISR(gdo2_semaphore, NULL);
+        task_woken = pdFALSE;
+		xSemaphoreGiveFromISR(gdo2_semaphore, &task_woken);
+        if (task_woken) {
+            // portYIELD();
+        }
 	}
 }
 
@@ -317,13 +322,13 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 
     conf->gdo0_port->DIRCLR = conf->gdo0_pin;
     volatile uint8_t * gdo0_pinctrl = port_pin_control(conf->gdo0_port, conf->gdo0_pin);
-    *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_BOTHEDGES_gc; // PORT_ISC_RISING_gc
+    *gdo0_pinctrl = (*gdo0_pinctrl) | PORT_ISC_RISING_gc;
     conf->gdo0_port->INT0MASK &= ~(conf->gdo0_pin);
     conf->gdo0_port->INTCTRL |= GDO0_INT_LVL_gc;
 
     conf->gdo2_port->DIRCLR = conf->gdo2_pin;
     volatile uint8_t * gdo2_pinctrl = port_pin_control(conf->gdo2_port, conf->gdo2_pin);
-    *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_BOTHEDGES_gc; // PORT_ISC_RISING_gc
+    *gdo2_pinctrl = (*gdo2_pinctrl) | PORT_ISC_RISING_gc;
     conf->gdo2_port->INT1MASK &= ~(conf->gdo2_pin);
     conf->gdo2_port->INTCTRL |= GDO2_INT_LVL_gc;
 

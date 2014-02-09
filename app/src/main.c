@@ -32,14 +32,15 @@ void app_task(void * params)
 
     uint8_t counter = 0;
     while (true) {
-        uint8_t buff[20];
+        #define BUFF_SIZE 60
+        uint8_t buff[BUFF_SIZE];
         buff[0] = 0;
         buff[1] = 0;
         buff[2] = 0;
         
-        int written = snprintf((char *) (&buff[3]), 17, "main-task %d\r\n", counter);
+        int written = snprintf((char *) (&buff[3]), BUFF_SIZE - 3, "xxxxxxx xxx zz this string comes from main-task %d\r\n", counter);
         if (written > 0) {
-            printf((const char *)(&buff[3]));
+            // printf((const char *)(&buff[3]));
             buff[0] = written + 2;
             rf_send(rf, buff, written + 3);
         }
