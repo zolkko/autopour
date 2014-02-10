@@ -71,10 +71,20 @@ typedef struct
 } ccx_hw_xmega_priv_t;
 
 
+typedef struct
+{
+    ccx_isr_proc_t handler;
+    void * data;
+} ccx_isr_handler_t;
+
+
 static xSemaphoreHandle gdo0_semaphore = NULL;
 
+static ccx_isr_handler_t gdo0_handler = {NULL, NULL};
 
 static xSemaphoreHandle gdo2_semaphore = NULL;
+
+static ccx_isr_handler_t gdo2_handler = {NULL, NULL};
 
 
 /**
@@ -82,9 +92,17 @@ static xSemaphoreHandle gdo2_semaphore = NULL;
  */
 ISR(PORTA_INT0_vect)
 {
-	if (gdo0_semaphore != NULL) {
-        xSemaphoreGiveFromISR(gdo0_semaphore, NULL);
-	}
+    static portBASE_TYPE task_woken;
+    if (gdo0_semaphore != NULL) {
+        if (gdo0_handler.handler != NULL) {
+            gdo0_handler.handler(gdo0_handler.data);
+        }
+        task_woken = pdFALSE;
+        xSemaphoreGiveFromISR(gdo0_semaphore, &task_woken);
+        if (task_woken) {
+            portYIELD();
+        }            
+    }
 }
 
 
@@ -94,13 +112,16 @@ ISR(PORTA_INT0_vect)
 ISR(PORTA_INT1_vect)
 {
     static portBASE_TYPE task_woken;
-	if (gdo2_semaphore != NULL) {
-        task_woken = pdFALSE;
-		xSemaphoreGiveFromISR(gdo2_semaphore, &task_woken);
-        if (task_woken) {
-            // portYIELD();
+    if (gdo2_semaphore != NULL) {
+        if (gdo2_handler.handler != NULL) {
+            gdo2_handler.handler(gdo2_handler.data);
         }
-	}
+        task_woken = pdFALSE;
+        xSemaphoreGiveFromISR(gdo2_semaphore, &task_woken);
+        if (task_woken) {
+            portYIELD();
+        }
+    }
 }
 
 
@@ -219,6 +240,44 @@ bool ccx_xmega_wait_gdo2(const ccx_hw_t * self, portTickType timeout)
 }
 
 
+void ccx_xmega_set_handler_gdo0(const ccx_hw_t * hw, ccx_isr_proc_t handler, void * data)
+{
+    gdo0_handler.handler = handler;
+    gdo0_handler.data = data;
+}
+
+
+void ccx_xmega_set_handler_gdo1(const ccx_hw_t * hw, ccx_isr_proc_t handler, void * data)
+{
+}
+
+
+void ccx_xmega_set_handler_gdo2(const ccx_hw_t * hw, ccx_isr_proc_t handler, void * data)
+{
+    gdo2_handler.handler = handler;
+    gdo2_handler.data = data;
+}
+
+
+void ccx_xmega_clear_handler_gdo0(const ccx_hw_t * hw)
+{
+    gdo0_handler.handler = NULL;
+    gdo0_handler.data = NULL;
+}
+
+
+void ccx_xmega_clear_handler_gdo1(const ccx_hw_t * hw)
+{
+}
+
+
+void ccx_xmega_clear_handler_gdo2(const ccx_hw_t * hw)
+{
+    gdo2_handler.handler = NULL;
+    gdo2_handler.data = NULL;
+}
+
+
 void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf)
 {
     // Clock, Slave Select, Slave Input and Output
@@ -236,7 +295,7 @@ void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf)
 
     // TODO: pull-up so pin and duplicate (input so pin)
 
-    conf->spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;
+    conf->spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_CLK2X_bm; // | SPI_PRESCALER_DIV4_gc;
 }
 
 
@@ -314,6 +373,14 @@ ccx_hw_t * ccx_hw_xmega_init(ccx_hw_t * hw_if, ccx_xmega_hw_t * conf)
 	hw_if->disable_gdo0 = &ccx_xmega_disable_gdo0;
 	hw_if->disable_gdo1 = &ccx_xmega_disable_gdo1;
 	hw_if->disable_gdo2 = &ccx_xmega_disable_gdo2;
+    
+    hw_if->set_handler_gdo0 = &ccx_xmega_set_handler_gdo0;
+    hw_if->set_handler_gdo1 = &ccx_xmega_set_handler_gdo1;
+    hw_if->set_handler_gdo2 = &ccx_xmega_set_handler_gdo2;
+    
+    hw_if->clear_handler_gdo0 = &ccx_xmega_clear_handler_gdo0;
+    hw_if->clear_handler_gdo1 = &ccx_xmega_clear_handler_gdo1;
+    hw_if->clear_handler_gdo2 = &ccx_xmega_clear_handler_gdo2;
 
 	ccx_hw_xmega_priv_t * priv = pvPortMalloc(sizeof(ccx_hw_xmega_priv_t));
 	priv->conf = conf;

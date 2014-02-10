@@ -34,6 +34,7 @@ typedef struct __rf_t {
 #define RF_TX_NOACK     -2
 #define RF_TX_TIMEOUT   -3
 #define RF_TX_TOO_LONG  -4
+#define RF_TX_UNDERFLOW -5
 
 
 #define rf_version(X)               X->version(X)
