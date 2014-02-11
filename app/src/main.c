@@ -37,8 +37,8 @@ void app_task(void * params)
         buff[0] = 0;
         buff[1] = 0;
         buff[2] = 0;
-        // int written = snprintf((char *) (&buff[3]), BUFF_SIZE - 3, "0123456789-0123456789-0123456789-0123456789-0123456789-0123456789-012345678-this string comes from main-task %d\r\n", counter);
-        int written = snprintf((char *) (&buff[3]), BUFF_SIZE - 3, "this string comes from main-task %d\r\n", counter);
+        int written = snprintf((char *) (&buff[3]), BUFF_SIZE - 3, "0123456789-0123456789-0123456789-0123456789-012345678-this string comes from main-task %d\r\n", counter);
+        //int written = snprintf((char *) (&buff[3]), BUFF_SIZE - 3, "this string comes from main-task %d\r\n", counter);
         if (written > 0) {
             // printf((const char *)(&buff[3]));
             buff[0] = written + 2;

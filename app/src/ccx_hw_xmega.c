@@ -295,7 +295,7 @@ void ccx_hw_xmega_init_spi(ccx_xmega_hw_t * conf)
 
     // TODO: pull-up so pin and duplicate (input so pin)
 
-    conf->spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc | SPI_CLK2X_bm; // | SPI_PRESCALER_DIV4_gc;
+    conf->spi->CTRL = SPI_ENABLE_bm | SPI_MASTER_bm | SPI_MODE_0_gc; // | SPI_PRESCALER_DIV4_gc;
 }
 
 

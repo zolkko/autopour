@@ -24,9 +24,9 @@
 #endif
 
 
-#define CC1101_FIFO_THR                   0x09
-#define CC1101_TX_FIFO_SIZE               60
-#define CC1101_TX_FIFO_CHUNK_SIZE         35
+#define CC1101_FIFO_THR                   0x0e
+#define CC1101_TX_FIFO_SIZE               20
+#define CC1101_TX_FIFO_CHUNK_SIZE         15
 #define CC1101_MAX_PACKET_LENGTH          127
 
 
@@ -36,6 +36,7 @@ typedef struct {
     int8_t    result;
     uint8_t   int_counter;
     uint8_t   wr_counter;
+    uint8_t   int0_counter;
 
 	ccx_hw_t * hw;
 	xSemaphoreHandle lock;
@@ -238,12 +239,12 @@ uint8_t cc1101_burst_read(const ccx_hw_t * self, uint8_t addr, uint8_t * data, u
 void cc1101_reset(const ccx_hw_t * hw)
 {
 	ccx_chip_select(hw);
-    _DELAY_US(1);
+    _DELAY_US(10);
 	ccx_chip_release(hw);
 
-    _DELAY_US(50);
+    _DELAY_US(500);
 
-    while ( ccx_ready(hw) ) ;
+    for (uint16_t i = 0; ccx_ready(hw) && i < 0xfff; i++) ;
 
 	ccx_chip_select(hw);
     while ( ! ccx_ready(hw) );
@@ -516,6 +517,7 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint8_t payload_l
     priv->result = RF_TX_OK;
     priv->int_counter = 0;
     priv->wr_counter = 0;
+    priv->int0_counter = 0;
 
     cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) payload, bytes_to_send);
     ccx_chip_release(hw);
@@ -536,7 +538,7 @@ void cc1101_tx_threshold_interrupt_handler(void * data)
 
 	priv->int_counter++;
 
-	if (priv->buff_length > 0 && priv->result) {
+	if (priv->buff_length > 0 && priv->result == RF_TX_OK) {
 		DECL_HW(hw, ((rf_t *) data));
 
 		uint8_t chunk_size = priv->buff_length > CC1101_TX_FIFO_CHUNK_SIZE ? CC1101_TX_FIFO_CHUNK_SIZE : priv->buff_length;
@@ -567,6 +569,7 @@ void cc1101_eop_interrupt_handler(void * data)
 	} while (status1 != status2);
 
 	DECL_PRIV(priv, ((rf_t *) data));
+    priv->int0_counter++;
 
 	if ((status1 & CC1101_MARC_bm) == CC1101_MARC_TXFIFO_UNDERFLOW_gc) {
 		priv->result = RF_TX_UNDERFLOW;
@@ -602,26 +605,28 @@ int8_t cc1101_transmit(const rf_t * self)
     // De-asserts when TX FIFO is drained below TX_FIFOR_THR
     cc1101_write(hw, CCx_IOCFG2, GDOx_CFG_TX_THR_TX_THR_gc | GDOx_CFG_INV_bm);
 
-    // Asserts when sync word transceived/received de-asserts when
-    // packet has been transmitted plus inversion
-    cc1101_write(hw, CCx_IOCFG0, GDOx_CFG_SYNC_WORD_gc | GDOx_CFG_INV_bm);
-
     // set interrupt handler. This should be called before the interrupt is enabled
     ccx_set_handler_gdo2(hw, (ccx_isr_proc_t) cc1101_tx_threshold_interrupt_handler, (void *) self);
     ccx_enable_gdo2(hw);
-	
+    
+    // Asserts when sync word transceived/received de-asserts when
+    // packet has been transmitted plus inversion
+    cc1101_write(hw, CCx_IOCFG0, GDOx_CFG_SYNC_WORD_gc | GDOx_CFG_INV_bm);
+    
 	// interrupt handler to track EOP or UNDERFLOW conditions
 	ccx_set_handler_gdo0(hw, (ccx_isr_proc_t) cc1101_eop_interrupt_handler, (void *) self);
 	ccx_enable_gdo0(hw);
+    
+    uint8_t buff_len;
+    int8_t result;
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        buff_len = priv->buff_length;
+        result = priv->result;
+    }
 
     cc1101_strobe_transmit(hw);
 
-	uint8_t buff_len;
-	int8_t result;
-	ATOMIC_BLOCK(ATOMIC_FORCEON) {
-		buff_len = priv->buff_length;
-		result = priv->result;
-	}
+    // TODO: CCA test
 
     while (buff_len > 0 && result == RF_TX_OK) {
 		if (!ccx_wait_gdo2(hw, 0xff)) {
@@ -633,12 +638,18 @@ int8_t cc1101_transmit(const rf_t * self)
 			result = priv->result;
 		}
     }
-    ccx_disable_gdo2(hw);
-    ccx_clear_handler_gdo2(hw);
+
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+        ccx_disable_gdo2(hw);
+        ccx_clear_handler_gdo2(hw);
+    }        
 
     bool gdo0_flag = ccx_wait_gdo0(hw, 0xff);
-	ccx_disable_gdo0(hw);
-	ccx_clear_handler_gdo0(hw);
+    
+    ATOMIC_BLOCK(ATOMIC_FORCEON) {
+	    ccx_disable_gdo0(hw);
+    	ccx_clear_handler_gdo0(hw);
+    }        
 
 	if (!gdo0_flag) {
 		priv->result = RF_TX_TIMEOUT;
