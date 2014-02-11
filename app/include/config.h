@@ -1,7 +1,7 @@
 #ifndef CONFIG_H_
 #define CONFIG_H_
 
-#define F_CPU           2000000UL
+#define F_CPU 10000000UL
 
 // LCD definition
 #define TH2028A_PORT PORTA
