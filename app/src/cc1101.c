@@ -96,6 +96,10 @@ static uint8_t cc1101_can_receive(const rf_t * self, portTickType ticks);
 
 #define release_lock(X) xSemaphoreGive(X)
 
+static void cc1101_tx_threshold_interrupt_handler(void * data);
+
+static void cc1101_eop_interrupt_handler(void * data);
+
 
 const uint8_t cc1101_cfg[] CC1101_REG_LOCATION = {
 	GDOx_CFG_TX_THR_TX_THR_gc,	// CCx_IOCFG2
@@ -522,21 +526,19 @@ int8_t cc1101_prepare(const rf_t * self, const void * payload, uint8_t payload_l
 }
 
 
-void cc1101_tx_threshold_interrupt_handler(rf_t * data);
-
-
 /**
  * This function will be called in context of GDO2 interrupt
  * so it should not call any FreeRTOS related routines.
  */
-void cc1101_tx_threshold_interrupt_handler(rf_t * data)
+void cc1101_tx_threshold_interrupt_handler(void * data)
 {
-	DECL_PRIV(priv, data);
+	DECL_PRIV(priv, ((rf_t *) data));
 
 	priv->int_counter++;
 
 	if (priv->buff_length > 0 && priv->result) {
-		DECL_HW(hw, data);
+		DECL_HW(hw, ((rf_t *) data));
+
 		uint8_t chunk_size = priv->buff_length > CC1101_TX_FIFO_CHUNK_SIZE ? CC1101_TX_FIFO_CHUNK_SIZE : priv->buff_length;
 		cc1101_burst_write(hw, CCx_TXFIFO, (const uint8_t *) priv->buff, chunk_size);
 		ccx_chip_release(hw);
@@ -553,10 +555,9 @@ void cc1101_tx_threshold_interrupt_handler(rf_t * data)
 /**
  * This handler may be called if CCx runs into tx-underflow state or if end of the packet is reached
  */
-void cc1101_eop_interrupt_handler(rf_t * data)
+void cc1101_eop_interrupt_handler(void * data)
 {
-	DECL_HW(hw, data);
-	DECL_PRIV(priv, data);
+	DECL_HW(hw, ((rf_t *) data));
 
 	uint8_t status1 = 0;
 	uint8_t status2 = 0;
@@ -564,6 +565,8 @@ void cc1101_eop_interrupt_handler(rf_t * data)
 		cc1101_read(hw, CCx_MARCSTATE, &status1);
 		cc1101_read(hw, CCx_MARCSTATE, &status2);
 	} while (status1 != status2);
+
+	DECL_PRIV(priv, ((rf_t *) data));
 
 	if ((status1 & CC1101_MARC_bm) == CC1101_MARC_TXFIFO_UNDERFLOW_gc) {
 		priv->result = RF_TX_UNDERFLOW;
